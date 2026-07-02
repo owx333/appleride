@@ -678,8 +678,8 @@
     <div class="user-chip">
       <div class="avatar">AH</div>
       <div class="user-info">
-        <div class="name" id="sidebar-owner-name">Owner</div>
-        <div class="role">Owner</div>
+        <div class="name" id="sidebar-owner-name">—</div>
+        <div class="role" id="sidebar-user-role">—</div>
       </div>
     </div>
   </div>
@@ -1071,11 +1071,11 @@
           <div class="section-title mb-16" data-i18n="settings.bizProfile">Business Profile</div>
           <div class="form-group">
             <label class="form-label" data-i18n="settings.businessName">Business Name</label>
-            <input class="form-control" value="AppleRide Transport" id="setting-biz-name">
+            <input class="form-control" value="T & A 4 U SERVICES" id="setting-biz-name">
           </div>
           <div class="form-group">
             <label class="form-label" data-i18n="settings.ownerName">Owner Name</label>
-            <input class="form-control" value="Ahmad Hafiz" id="setting-owner">
+            <input class="form-control" value="" id="setting-owner" placeholder="Legal owner for receipts">
           </div>
           <div class="form-group">
             <label class="form-label" data-i18n="settings.phone">Phone</label>
@@ -1989,8 +1989,8 @@ function enterApp() {
 let appSettings = {
   bookingTypes: [...DEFAULT_BOOKING_TYPES],
   incomeTypes: [...DEFAULT_INCOME_TYPES],
-  bizName: 'AppleRide Transport',
-  owner: 'Ahmad Hafiz',
+  bizName: 'T & A 4 U SERVICES',
+  owner: '',
   phone: '',
   email: '',
   bizRegId: '',
@@ -3931,7 +3931,7 @@ function subscribeSettings() {
     populateTypeSelects();
     renderSettingsTypes();
     renderIncomeQuickSources();
-    syncSidebarOwner();
+    syncSidebarUser();
     applyRoleUI();
     if (isPageActive('settings')) loadSettingsForm();
   }, () => {
@@ -4192,14 +4192,25 @@ function ownerInitials(name) {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-function syncSidebarOwner() {
+function getLoggedInUserName() {
+  if (userRole === 'driver' && currentDriverProfile?.name) return currentDriverProfile.name;
+  if (currentUser?.displayName?.trim()) return currentUser.displayName.trim();
+  return getRogerUserName();
+}
+
+function syncSidebarUser() {
   const nameEl = document.getElementById('sidebar-owner-name');
   const avatarEl = document.querySelector('.sidebar-footer .avatar');
-  const roleEl = document.querySelector('.sidebar-footer .user-info .role');
-  const ownerName = (appSettings.owner || '').trim() || t('role.owner');
-  if (nameEl) nameEl.textContent = ownerName;
-  if (avatarEl) avatarEl.textContent = ownerInitials(ownerName);
-  if (roleEl) roleEl.textContent = appSettings.bizName || t('role.owner');
+  const roleEl = document.getElementById('sidebar-user-role');
+  if (!currentUser) return;
+  const displayName = getLoggedInUserName();
+  if (nameEl) nameEl.textContent = displayName;
+  if (avatarEl) avatarEl.textContent = ownerInitials(displayName);
+  if (roleEl) {
+    roleEl.innerHTML = userRole === 'driver'
+      ? `<span class="role-badge driver">${t('role.driver')}</span>`
+      : `<span class="role-badge admin">${t('role.admin')}</span>`;
+  }
 }
 
 let yesterdayNotifChecked = false;
@@ -4235,13 +4246,8 @@ function applyRoleUI() {
   const isDriver = userRole === 'driver';
   document.querySelectorAll('.admin-only').forEach(el => el.style.display = isDriver ? 'none' : '');
   document.querySelectorAll('.driver-nav, .driver-only').forEach(el => el.style.display = isDriver ? '' : 'none');
+  syncSidebarUser();
   if (isDriver && currentDriverProfile) {
-    const nameEl = document.getElementById('sidebar-owner-name');
-    const avatarEl = document.querySelector('.sidebar-footer .avatar');
-    const roleEl = document.querySelector('.sidebar-footer .user-info .role');
-    if (nameEl) nameEl.textContent = currentDriverProfile.name;
-    if (avatarEl) avatarEl.textContent = ownerInitials(currentDriverProfile.name);
-    if (roleEl) roleEl.textContent = t('role.driver');
     updateMyTripsBadge();
     const homeBtn = document.querySelector('.mobile-nav-item[data-page="dashboard"], .mobile-nav-item[data-page="mytrips"]');
     if (homeBtn) {
@@ -4254,7 +4260,6 @@ function applyRoleUI() {
     }
     if (document.querySelector('.page.active')?.id === 'page-dashboard') showHomePage();
   } else {
-    syncSidebarOwner();
     const homeBtn = document.querySelector('.mobile-nav-item[data-page="mytrips"]');
     const dashBtn = document.querySelector('.mobile-nav-item[data-page="dashboard"]');
     if (dashBtn && !dashBtn.dataset.page) dashBtn.dataset.page = 'dashboard';
@@ -4856,7 +4861,6 @@ window.saveBizSettings = async function() {
   appSettings.email = document.getElementById('setting-email').value;
   appSettings.bizRegId = document.getElementById('setting-biz-reg')?.value?.trim() || '';
   appSettings.currency = document.getElementById('setting-currency').value;
-  syncSidebarOwner();
   await saveAppSettings();
   toast(t('toast.settingsSaved'), 'success');
 };
