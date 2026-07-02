@@ -1108,6 +1108,15 @@
           </div>
         </div>
         <div class="card">
+          <div class="section-title mb-16" data-i18n="settings.teamUsers">Team Users</div>
+          <div class="text-sm text-muted mb-8" data-i18n="settings.teamUsersSub">Teammates who can log in and use Roger. Each email must also have a Firebase Auth account.</div>
+          <div class="type-tags" id="settings-team-users"></div>
+          <div class="type-add-row">
+            <input class="form-control" id="new-team-email" type="email" data-i18n-placeholder="settings.teamEmailPh" placeholder="teammate@email.com" onkeydown="if(event.key==='Enter')addTeamUser()">
+            <button class="btn btn-primary btn-sm" onclick="addTeamUser()" data-i18n="btn.add">Add</button>
+          </div>
+        </div>
+        <div class="card">
           <div class="section-title mb-16" data-i18n="settings.firebase">Firebase Connection</div>
           <div id="firebase-settings-status">
             <div class="detail-row"><div class="detail-label">Status</div><div class="detail-value text-muted">Checking...</div></div>
@@ -1628,7 +1637,9 @@ const I18N = {
     'modal.newBooking':'New Booking','modal.newCustomer':'New Customer','modal.addIncome':'Add Income',
     'modal.recordExpense':'Record Expense','modal.addDriver':'Add Driver','modal.addVehicle':'Add Vehicle',
     'modal.bookingDetails':'Booking Details','modal.editBooking':'Edit Booking','modal.editIncome':'Edit Income',
-    'settings.bookingTypes':'Booking Types','settings.incomeSources':'Income Sources','settings.firebase':'Firebase Connection',
+    'settings.bookingTypes':'Booking Types','settings.incomeSources':'Income Sources',
+    'settings.teamUsers':'Team Users','settings.teamUsersSub':'Teammates who can log in and use Roger. Each email must also have a Firebase Auth account.','settings.teamEmailPh':'teammate@email.com',
+    'settings.firebase':'Firebase Connection',
     'settings.notifications':'Notification Settings','settings.data':'Data',
     'empty.noBookingsFound':'No bookings found','empty.adjustFilters':'Try adjusting your filters or create a new booking.',
     'toast.plateModelRequired':'Plate and model required','toast.vehicleUpdated':'Vehicle updated ✓','toast.vehicleAdded':'Vehicle added ✓',
@@ -1658,6 +1669,7 @@ const I18N = {
     'toast.accessSetupIssue':'Access setup issue — check Firebase settings/access','toast.fillRequired':'Please fill all required fields',
     'toast.namePhoneRequired':'Name and phone are required','toast.namePhoneReq':'Name and phone required',
     'toast.bookingDeleted':'Booking deleted','toast.incomeDeleted':'Income deleted','toast.expenseDeleted':'Expense deleted',
+    'toast.incomeAutoCreated':'Income auto-recorded from completed booking ✓',
     'toast.driverDeleted':'Driver deleted','toast.vehicleDeleted':'Vehicle deleted','toast.customerDeleted':'Customer deleted',
     'toast.expenseUpdated':'Expense updated ✓','toast.dailyClosingSaved':'Daily closing saved ✓',
     'toast.bookingTypeAdded':'Booking type added ✓','toast.bookingTypeRemoved':'Booking type removed','toast.incomeSourceAdded':'Income source added ✓',
@@ -1674,7 +1686,7 @@ const I18N = {
     'title.commandPalette':'Command Palette (⌘K)','th.plate':'Plate','th.model':'Model','th.year':'Year','th.color':'Color',
     'th.license':'License','th.loginEmail':'Login Email','th.rating':'Rating','th.insurance':'Insurance Expiry','th.roadTax':'Road Tax Expiry',
     'nav.roger':'Roger','page.roger':'Roger — Team Handoff','mobile.roger':'Roger',
-    'roger.sub':'Trip full? Open Roger and let teammates pick up the job.',
+    'roger.sub':'Trip full? Roger a teammate — they can pick up the job from Roger.',
     'roger.tabOpen':'Open Requests','roger.tabActive':'My Active','roger.tabHistory':'History',
     'roger.tripTitle':'Roger Trip','roger.requestedBy':'Requested by','roger.claimedBy':'Claimed by',
     'roger.balanceDue':'Balance to collect','roger.noOpen':'No open Roger requests','roger.noOpenSub':'When a teammate opens Roger, jobs appear here.',
@@ -1691,6 +1703,8 @@ const I18N = {
     'receipt.serviceDetails':'Service Details','receipt.total':'Total','receipt.deposit':'Deposit Paid',
     'receipt.balance':'Balance Due','receipt.paymentMethod':'Payment Method','receipt.thankYou':'Thank you for your business!',
     'receipt.incomeTitle':'PAYMENT RECEIPT','receipt.description':'Description','receipt.amount':'Amount','receipt.regNo':'Reg. No.',
+    'toast.teamUserAdded':'Team user added ✓','toast.teamUserRemoved':'Team user removed','toast.teamEmailInvalid':'Enter a valid email',
+    'settings.teamYou':'you','settings.teamEmpty':'No team users yet','settings.teamRemoveConfirm':'Remove {email} from team?',
     'toast.rogerSent':'Roger sent to team ✓','toast.rogerClaimed':'Roger job accepted ✓',
     'toast.rogerCancelled':'Roger cancelled','toast.rogerOwn':'You cannot accept your own Roger',
     'toast.rogerCompleted':'Roger trip completed — customer info cleared ✓',
@@ -1764,7 +1778,9 @@ const I18N = {
     'modal.newBooking':'新建订单','modal.newCustomer':'新建客户','modal.addIncome':'添加收入',
     'modal.recordExpense':'记录支出','modal.addDriver':'添加司机','modal.addVehicle':'添加车辆',
     'modal.bookingDetails':'订单详情','modal.editBooking':'编辑订单','modal.editIncome':'编辑收入',
-    'settings.bookingTypes':'订单类型','settings.incomeSources':'收入来源','settings.firebase':'Firebase 连接',
+    'settings.bookingTypes':'订单类型','settings.incomeSources':'收入来源',
+    'settings.teamUsers':'团队用户','settings.teamUsersSub':'可登录并使用 Roger 的队友。每个邮箱也需在 Firebase Auth 创建账号。','settings.teamEmailPh':'teammate@email.com',
+    'settings.firebase':'Firebase 连接',
     'settings.notifications':'通知设置','settings.data':'数据',
     'empty.noBookingsFound':'未找到订单','empty.adjustFilters':'请调整筛选条件或创建新订单。',
     'toast.plateModelRequired':'请填写车牌和车型','toast.vehicleUpdated':'车辆已更新 ✓','toast.vehicleAdded':'车辆已添加 ✓',
@@ -1794,6 +1810,7 @@ const I18N = {
     'toast.accessSetupIssue':'访问设置有问题 — 请检查 Firebase settings/access','toast.fillRequired':'请填写所有必填项',
     'toast.namePhoneRequired':'请填写姓名和电话','toast.namePhoneReq':'请填写姓名和电话',
     'toast.bookingDeleted':'订单已删除','toast.incomeDeleted':'收入已删除','toast.expenseDeleted':'支出已删除',
+    'toast.incomeAutoCreated':'已完成订单已自动记入收入 ✓',
     'toast.driverDeleted':'司机已删除','toast.vehicleDeleted':'车辆已删除','toast.customerDeleted':'客户已删除',
     'toast.expenseUpdated':'支出已更新 ✓','toast.dailyClosingSaved':'每日结算已保存 ✓',
     'toast.bookingTypeAdded':'订单类型已添加 ✓','toast.bookingTypeRemoved':'订单类型已移除','toast.incomeSourceAdded':'收入来源已添加 ✓',
@@ -1827,6 +1844,8 @@ const I18N = {
     'receipt.serviceDetails':'服务详情','receipt.total':'总计','receipt.deposit':'已付订金',
     'receipt.balance':'待付余额','receipt.paymentMethod':'付款方式','receipt.thankYou':'感谢您的支持！',
     'receipt.incomeTitle':'付款收据','receipt.description':'描述','receipt.amount':'金额','receipt.regNo':'注册号',
+    'toast.teamUserAdded':'团队用户已添加 ✓','toast.teamUserRemoved':'团队用户已移除','toast.teamEmailInvalid':'请输入有效邮箱',
+    'settings.teamYou':'你','settings.teamEmpty':'暂无团队用户','settings.teamRemoveConfirm':'从团队移除 {email}？',
     'toast.rogerSent':'Roger 已发送给团队 ✓','toast.rogerClaimed':'Roger 已接单 ✓',
     'toast.rogerCancelled':'Roger 已取消','toast.rogerOwn':'不能接自己发出的 Roger',
     'toast.rogerCompleted':'Roger 行程已完成 — 客户资料已隐藏 ✓',
@@ -1903,7 +1922,7 @@ function refreshActivePage() {
   document.getElementById('topbar-title').textContent = t('page.' + page);
   const cfg = SECTION_CFG[page];
   if (cfg?.render) cfg.render();
-  else if (page === 'settings') { loadSettingsForm(); renderSettingsTypes(); checkFirebaseConnection(); }
+  else if (page === 'settings') { loadSettingsForm(); renderSettingsTypes(); renderTeamUsers(); checkFirebaseConnection(); }
   else if (page === 'reports') renderReports('summary');
   updateBadges();
 }
@@ -1968,6 +1987,7 @@ let db = {
 
 let currentDriverProfile = null;
 let userRole = 'admin';
+let accessData = { admins: {}, driverEmails: {} };
 
 let bookingCounter = 1000;
 let calYear, calMonth;
@@ -2156,6 +2176,7 @@ function subscribeCol(colName, renderFn) {
     updateBadges();
     if (renderFn) renderFn();
     if (colName === 'bookings') checkFirebaseConnection();
+    if (colName === 'bookings' && db.bookings.length) backfillMissingBookingIncomes();
   }, (err) => {
     console.error(colName, err);
     firebaseConnected = false;
@@ -2175,9 +2196,69 @@ async function save() {
 }
 
 // Save a single record to Firestore
-async function saveRecord(colName, record) {
+function bookingIncomeId(bookingId) {
+  return `INC-${bookingId}`;
+}
+
+function hasIncomeForBooking(bookingId) {
+  return db.income.some(i => i.id === bookingIncomeId(bookingId) || i.bookingId === bookingId);
+}
+
+function resolveIncomeTypeFromBooking(bookingType) {
+  const types = appSettings.incomeTypes || DEFAULT_INCOME_TYPES;
+  if (bookingType && types.includes(bookingType)) return bookingType;
+  if (types.includes('Private Booking')) return 'Private Booking';
+  return types[0] || 'Others';
+}
+
+async function ensureBookingIncome(booking, { notify = true } = {}) {
+  if (!booking || booking.status !== 'Completed') return false;
+  if (hasIncomeForBooking(booking.id)) return false;
+  const amount = parseFloat(booking.amount) || 0;
+  const cust = db.customers.find(c => c.id === booking.customerId);
+  const route = [booking.pickup, booking.dropoff].filter(Boolean).join(' → ');
+  const descParts = [booking.id, cust?.name, route].filter(Boolean);
+  const income = {
+    id: bookingIncomeId(booking.id),
+    bookingId: booking.id,
+    date: booking.date || today(),
+    type: resolveIncomeTypeFromBooking(booking.type),
+    desc: descParts.join(' · '),
+    driverId: booking.driverId || '',
+    payment: booking.paymentMethod || 'Cash',
+    amount,
+    autoFromBooking: true,
+    createdAt: new Date().toISOString()
+  };
+  await fsSet('income', income.id, income);
+  if (booking.incomeId !== income.id) {
+    await fsSet('bookings', booking.id, { ...booking, incomeId: income.id, updatedAt: new Date().toISOString() });
+  }
+  if (notify) toast(t('toast.incomeAutoCreated'), 'success');
+  return true;
+}
+
+let bookingIncomeBackfillDone = false;
+async function backfillMissingBookingIncomes() {
+  if (bookingIncomeBackfillDone || !db.bookings.length) return;
+  bookingIncomeBackfillDone = true;
+  for (const b of db.bookings) {
+    if (b.status === 'Completed' && !hasIncomeForBooking(b.id)) {
+      await ensureBookingIncome(b, { notify: false });
+    }
+  }
+}
+
+async function saveRecord(colName, record, opts = {}) {
   try {
+    let previousStatus = opts.previousStatus;
+    if (colName === 'bookings' && previousStatus === undefined) {
+      previousStatus = db.bookings.find(x => x.id === record.id)?.status;
+    }
     await fsSet(colName, record.id, record);
+    if (colName === 'bookings' && record.status === 'Completed' && previousStatus !== 'Completed') {
+      await ensureBookingIncome(record);
+    }
   } catch(e) {
     toast('Save failed: ' + e.message, 'error');
     console.error(e);
@@ -2919,7 +3000,7 @@ function nav(page) {
   else if (page === 'closing') renderClosing();
   else if (page === 'reports') renderReports('summary');
   else if (page === 'notifications') renderNotifications();
-  else if (page === 'settings') { loadSettingsForm(); renderSettingsTypes(); checkFirebaseConnection(); }
+  else if (page === 'settings') { loadSettingsForm(); renderSettingsTypes(); renderTeamUsers(); checkFirebaseConnection(); }
   document.querySelectorAll('.mobile-nav-item').forEach(btn => btn.classList.toggle('active', btn.dataset.page === page));
   toggleSidebar(false);
   setTimeout(hidePageSkeleton, 220);
@@ -3068,6 +3149,8 @@ function renderBookings() {
       <td>${bookingStatusBadge(b.status)}</td>
       <td class="table-actions"><div class="action-btns">
         <button class="btn btn-ghost btn-sm" onclick="viewBooking('${b.id}')">View</button>
+        ${canRequestRoger(b) ? `<button class="btn btn-ghost btn-sm" onclick="requestRoger('${b.id}')">${t('btn.roger')}</button>` : ''}
+        ${getRoger(b).status === 'open' && rogerUserMatch(getRoger(b).requestedBy) ? `<button class="btn btn-ghost btn-sm" onclick="cancelRoger('${b.id}')">${t('btn.cancelRoger')}</button>` : ''}
         <button class="btn btn-ghost btn-sm" onclick="editBooking('${b.id}')">Edit</button>
         <button class="btn btn-danger btn-sm" onclick="deleteBooking('${b.id}')">Del</button>
       </div></td>
@@ -3129,12 +3212,15 @@ window.saveBooking = async function() {
   const dropoff= document.getElementById('b-dropoff').value;
   if (!custId || !date || !time || !pickup || !dropoff) { toast('Please fill all required fields', 'error'); return; }
   const editId = document.getElementById('edit-booking-id').value;
+  const previousStatus = editId ? db.bookings.find(x => x.id === editId)?.status : null;
   const cust = db.customers.find(c => c.id === custId);
   const booking = {
     id: editId || `RF${++bookingCounter}`,
     customerId: custId,
     customerName: cust?.name || '',
     customerPhone: cust?.phone || '',
+    ownerEmail: editId ? (db.bookings.find(x => x.id === editId)?.ownerEmail || getRogerUserId() || '') : (getRogerUserId() || ''),
+    ownerName: editId ? (db.bookings.find(x => x.id === editId)?.ownerName || getRogerUserName() || '') : (getRogerUserName() || ''),
     type: getBookingTypeValue(), date, time, pickup, dropoff,
     amount: parseFloat(document.getElementById('b-amount').value) || 0,
     deposit: parseFloat(document.getElementById('b-deposit').value) || 0,
@@ -3148,7 +3234,7 @@ window.saveBooking = async function() {
     roger: editId ? (db.bookings.find(x => x.id === editId)?.roger || { status: 'none' }) : { status: 'none' },
     updatedAt: new Date().toISOString()
   };
-  await saveRecord('bookings', booking);
+  await saveRecord('bookings', booking, { previousStatus });
   toast(editId ? 'Booking updated ✓' : 'Booking created: ' + booking.id, 'success');
   closeModal('modal-booking');
 };
@@ -3185,6 +3271,8 @@ window.viewBooking = function(id) {
     </select></div>
     <button class="btn btn-ghost" onclick="closeModal('modal-booking-detail')">Close</button>
     <button class="btn btn-ghost" onclick="generateBookingReceipt('${b.id}')">${t('btn.generateReceipt')}</button>
+    ${canRequestRoger(b) ? `<button class="btn btn-ghost" onclick="requestRoger('${b.id}')">${t('btn.roger')}</button>` : ''}
+    ${getRoger(b).status === 'open' && rogerUserMatch(getRoger(b).requestedBy) ? `<button class="btn btn-ghost" onclick="cancelRoger('${b.id}')">${t('btn.cancelRoger')}</button>` : ''}
     ${userRole !== 'driver' ? `<button class="btn btn-danger" onclick="closeModal('modal-booking-detail');deleteBooking('${b.id}')">Delete</button>` : ''}
     <button class="btn btn-primary" onclick="quickUpdateStatus('${b.id}')">Update Status</button>
     ${userRole !== 'driver' ? `<button class="btn btn-ghost" onclick="closeModal('modal-booking-detail');editBooking('${b.id}')">Edit</button>` : ''}
@@ -3194,8 +3282,10 @@ window.viewBooking = function(id) {
 
 window.quickUpdateStatus = async function(id) {
   const b = db.bookings.find(x => x.id === id); if (!b) return;
+  const previousStatus = b.status;
   b.status = document.getElementById('quick-status').value;
-  await saveRecord('bookings', b);
+  b.updatedAt = new Date().toISOString();
+  await saveRecord('bookings', b, { previousStatus });
   closeModal('modal-booking-detail');
   toast('Status updated to: ' + b.status, 'success');
 };
@@ -3725,7 +3815,48 @@ function subscribeSettings() {
     renderIncomeQuickSources();
   });
   unsubscribers.push(unsub);
+
+  const accessRef = doc(db_fs, 'settings', 'access');
+  const unsubAccess = onSnapshot(accessRef, (snap) => {
+    if (snap.exists()) accessData = snap.data();
+    renderTeamUsers();
+    updateRogerBadge();
+  });
+  unsubscribers.push(unsubAccess);
 }
+
+function getTeamAdmins() {
+  return Object.keys(accessData.admins || {}).filter(e => accessData.admins[e]).sort();
+}
+
+function renderTeamUsers() {
+  const el = document.getElementById('settings-team-users');
+  if (!el) return;
+  const me = getRogerUserId();
+  el.innerHTML = getTeamAdmins().map(email => `
+    <span class="type-tag">${email}${email === me ? ` (${t('settings.teamYou')})` : ''}
+      ${email !== me ? `<button type="button" class="type-tag-remove" onclick="removeTeamUser('${email.replace(/'/g, "\\'")}')">×</button>` : ''}
+    </span>`).join('') || `<span class="text-sm text-muted">${t('settings.teamEmpty')}</span>`;
+}
+
+window.addTeamUser = async function() {
+  const input = document.getElementById('new-team-email');
+  const email = input?.value.trim().toLowerCase();
+  if (!email || !email.includes('@')) { toast(t('toast.teamEmailInvalid'), 'error'); return; }
+  const admins = { ...(accessData.admins || {}), [email]: true };
+  await setDoc(doc(db_fs, 'settings', 'access'), { admins }, { merge: true });
+  input.value = '';
+  toast(t('toast.teamUserAdded'), 'success');
+};
+
+window.removeTeamUser = async function(email) {
+  if (email === getRogerUserId()) return;
+  if (!confirm(t('settings.teamRemoveConfirm', { email }))) return;
+  const admins = { ...(accessData.admins || {}) };
+  delete admins[email];
+  await setDoc(doc(db_fs, 'settings', 'access'), { admins }, { merge: true });
+  toast(t('toast.teamUserRemoved'), 'success');
+};
 
 async function saveAppSettings() {
   await fsSet('settings', 'app', appSettings);
@@ -4007,7 +4138,7 @@ window.viewDriverTrip = function(id) {
   const b = db.bookings.find(x => x.id === id);
   if (!b || b.driverId !== currentDriverProfile?.id) { toast(t('toast.accessDenied'), 'error'); return; }
   const r = getRoger(b);
-  if (r.status === 'claimed' && r.claimedBy === currentDriverProfile?.id) {
+  if (r.status === 'claimed' && rogerUserMatch(r.claimedBy)) {
     viewRogerTrip(id);
     return;
   }
@@ -4017,22 +4148,56 @@ window.viewDriverTrip = function(id) {
 window.driverUpdateStatus = async function(id, status) {
   const b = db.bookings.find(x => x.id === id);
   if (!b || b.driverId !== currentDriverProfile?.id) return;
+  const previousStatus = b.status;
   b.status = status;
   b.updatedAt = new Date().toISOString();
   if (getRoger(b).status === 'claimed' && status === 'Completed') {
-    await completeRogerTrip(b);
+    await completeRogerTrip(b, previousStatus);
     return;
   }
-  await saveRecord('bookings', b);
+  await saveRecord('bookings', b, { previousStatus });
   toast(t('toast.statusUpdated', { status: tStatus(status) }), 'success');
   renderMyTrips();
   renderRoger();
 };
 
 // ============================================================
-// ROGER — team handoff
+// ROGER — team handoff (user A → user B)
 // ============================================================
 let rogerActiveTab = 'open';
+
+function getRogerUserId() {
+  return currentUser?.email?.toLowerCase() || null;
+}
+
+function getRogerUserName() {
+  const email = getRogerUserId();
+  if (!email) return '—';
+  const local = email.split('@')[0];
+  return local.charAt(0).toUpperCase() + local.slice(1);
+}
+
+function isTeamUser() {
+  const id = getRogerUserId();
+  return !!(id && accessData.admins?.[id]);
+}
+
+function rogerUserMatch(storedId) {
+  if (!storedId) return false;
+  const me = getRogerUserId();
+  if (storedId === me) return true;
+  if (currentDriverProfile && storedId === currentDriverProfile.id) return true;
+  return false;
+}
+
+function bookingOwnedByMe(b) {
+  const me = getRogerUserId();
+  if (!me || !b) return false;
+  if (b.ownerEmail === me) return true;
+  if (currentDriverProfile && b.driverId === currentDriverProfile.id) return true;
+  if (!b.ownerEmail && !b.driverId && userRole === 'admin') return true;
+  return false;
+}
 
 function getRoger(b) {
   return b?.roger || { status: 'none' };
@@ -4042,7 +4207,7 @@ function getCustomerSnapshot(b) {
   const r = getRoger(b);
   if (r.status === 'completed') return null;
   if (r.customerSnapshot?.name) return r.customerSnapshot;
-  if (r.status === 'claimed' && r.claimedBy === currentDriverProfile?.id) {
+  if (r.status === 'claimed' && rogerUserMatch(r.claimedBy)) {
     return { name: b.customerName || '—', phone: b.customerPhone || '' };
   }
   return null;
@@ -4054,26 +4219,26 @@ function getOpenRogerBookings() {
 }
 
 function getMyActiveRogerBookings() {
-  if (!currentDriverProfile) return [];
+  if (!getRogerUserId()) return [];
   return db.bookings.filter(b => {
     const r = getRoger(b);
-    return r.status === 'claimed' && r.claimedBy === currentDriverProfile.id
+    return r.status === 'claimed' && rogerUserMatch(r.claimedBy)
       && !['Completed', 'Cancelled', 'No Show'].includes(b.status);
   });
 }
 
 function getRogerHistoryBookings() {
-  if (!currentDriverProfile && userRole !== 'admin') return [];
+  if (!getRogerUserId()) return [];
   return db.bookings.filter(b => {
     const r = getRoger(b);
     if (r.status !== 'completed') return false;
-    if (userRole === 'admin') return true;
-    return r.requestedBy === currentDriverProfile.id || r.claimedBy === currentDriverProfile.id;
+    return rogerUserMatch(r.requestedBy) || rogerUserMatch(r.claimedBy);
   }).sort((a, b) => (b.roger?.completedAt || '').localeCompare(a.roger?.completedAt || ''));
 }
 
 function canRequestRoger(b) {
-  if (!currentDriverProfile || b.driverId !== currentDriverProfile.id) return false;
+  if (!getRogerUserId() || !isTeamUser()) return false;
+  if (!bookingOwnedByMe(b)) return false;
   if (['Completed', 'Cancelled', 'No Show'].includes(b.status)) return false;
   const rs = getRoger(b).status;
   return rs === 'none' || rs === 'completed';
@@ -4082,10 +4247,9 @@ function canRequestRoger(b) {
 function updateRogerBadge() {
   const el = document.getElementById('badge-roger');
   if (!el) return;
+  const me = getRogerUserId();
   let count = getOpenRogerBookings().length;
-  if (currentDriverProfile) {
-    count = getOpenRogerBookings().filter(b => getRoger(b).requestedBy !== currentDriverProfile.id).length;
-  }
+  if (me) count = getOpenRogerBookings().filter(b => !rogerUserMatch(getRoger(b).requestedBy)).length;
   el.textContent = count;
   el.style.display = count > 0 ? 'inline' : 'none';
 }
@@ -4099,8 +4263,8 @@ window.switchRogerTab = function(tab) {
 function renderRogerBoardCard(b, mode) {
   const r = getRoger(b);
   const snap = mode === 'active' ? getCustomerSnapshot(b) : null;
-  const isMine = r.requestedBy === currentDriverProfile?.id;
-  const canClaim = mode === 'open' && currentDriverProfile && !isMine && r.status === 'open';
+  const isMine = rogerUserMatch(r.requestedBy);
+  const canClaim = mode === 'open' && getRogerUserId() && !isMine && r.status === 'open';
   return `<div class="roger-card ${mode === 'active' ? 'claimed' : mode === 'history' ? 'history' : ''}">
     <div class="flex-center gap-8" style="justify-content:space-between;flex-wrap:wrap;margin-bottom:8px">
       <div><span class="td-mono font-bold">${b.id}</span> <span class="roger-badge">${mode === 'open' ? t('roger.statusOpen') : mode === 'active' ? t('roger.statusClaimed') : t('roger.statusCompleted')}</span></div>
@@ -4165,16 +4329,17 @@ window.requestRoger = async function(bookingId) {
   if (!confirm(t('roger.confirmRequest'))) return;
   b.roger = {
     status: 'open',
-    requestedBy: currentDriverProfile.id,
-    requestedByName: currentDriverProfile.name,
+    requestedBy: getRogerUserId(),
+    requestedByName: getRogerUserName(),
     requestedAt: new Date().toISOString(),
     claimedBy: '',
     claimedByName: ''
   };
+  if (!b.ownerEmail) b.ownerEmail = getRogerUserId();
   b.updatedAt = new Date().toISOString();
   await saveRecord('bookings', b);
   toast(t('toast.rogerSent'), 'success');
-  renderMyTrips();
+  renderBookings();
   renderRoger();
   updateRogerBadge();
 };
@@ -4182,41 +4347,41 @@ window.requestRoger = async function(bookingId) {
 window.cancelRoger = async function(bookingId) {
   const b = db.bookings.find(x => x.id === bookingId);
   const r = getRoger(b);
-  if (!b || r.requestedBy !== currentDriverProfile?.id || r.status !== 'open') return;
+  if (!b || !rogerUserMatch(r.requestedBy) || r.status !== 'open') return;
   if (!confirm(t('roger.confirmCancel'))) return;
   b.roger = { status: 'none' };
   b.updatedAt = new Date().toISOString();
   await saveRecord('bookings', b);
   toast(t('toast.rogerCancelled'), 'success');
-  renderMyTrips();
+  renderBookings();
   renderRoger();
 };
 
 window.claimRoger = async function(bookingId) {
   const b = db.bookings.find(x => x.id === bookingId);
   const r = getRoger(b);
-  if (!b || r.status !== 'open' || !currentDriverProfile) return;
-  if (r.requestedBy === currentDriverProfile.id) { toast(t('toast.rogerOwn'), 'error'); return; }
+  if (!b || r.status !== 'open' || !getRogerUserId()) return;
+  if (rogerUserMatch(r.requestedBy)) { toast(t('toast.rogerOwn'), 'error'); return; }
   if (!confirm(t('roger.confirmClaim'))) return;
   b.roger = {
     ...r,
     status: 'claimed',
-    claimedBy: currentDriverProfile.id,
-    claimedByName: currentDriverProfile.name,
+    claimedBy: getRogerUserId(),
+    claimedByName: getRogerUserName(),
     claimedAt: new Date().toISOString(),
     customerSnapshot: { name: b.customerName || '—', phone: b.customerPhone || '' }
   };
-  b.driverId = currentDriverProfile.id;
-  b.status = 'Assigned';
+  b.status = b.status === 'New' ? 'Assigned' : b.status;
   b.updatedAt = new Date().toISOString();
   await saveRecord('bookings', b);
   toast(t('toast.rogerClaimed'), 'success');
   switchRogerTab('active');
-  renderMyTrips();
+  renderRoger();
   viewRogerTrip(bookingId);
 };
 
-async function completeRogerTrip(b) {
+async function completeRogerTrip(b, previousStatus) {
+  const prev = previousStatus ?? b.status;
   const r = getRoger(b);
   b.status = 'Completed';
   b.roger = {
@@ -4226,47 +4391,46 @@ async function completeRogerTrip(b) {
     customerSnapshot: null
   };
   b.updatedAt = new Date().toISOString();
-  await saveRecord('bookings', b);
+  await saveRecord('bookings', b, { previousStatus: prev });
   toast(t('toast.rogerCompleted'), 'success');
   closeModal('modal-roger-trip');
-  renderMyTrips();
   renderRoger();
+  renderBookings();
 }
 
 window.rogerUpdateStatus = async function(bookingId, status) {
   const b = db.bookings.find(x => x.id === bookingId);
   const r = getRoger(b);
-  if (!b || r.claimedBy !== currentDriverProfile?.id) return;
+  if (!b || !rogerUserMatch(r.claimedBy)) return;
+  const previousStatus = b.status;
   b.status = status;
   b.updatedAt = new Date().toISOString();
   if (status === 'Completed') {
-    await completeRogerTrip(b);
+    await completeRogerTrip(b, previousStatus);
     return;
   }
-  await saveRecord('bookings', b);
+  await saveRecord('bookings', b, { previousStatus });
   toast(t('toast.statusUpdated', { status: tStatus(status) }), 'success');
   viewRogerTrip(bookingId);
   renderRoger();
-  renderMyTrips();
 };
 
 window.viewRogerTrip = function(bookingId) {
   const b = db.bookings.find(x => x.id === bookingId);
   if (!b) return;
   const r = getRoger(b);
-  const isClaimer = r.claimedBy === currentDriverProfile?.id;
-  const isAdmin = userRole === 'admin';
+  const isClaimer = rogerUserMatch(r.claimedBy);
   const isHistory = r.status === 'completed';
-  if (!isAdmin && !isClaimer && r.status !== 'open') {
+  if (!isTeamUser() && !isClaimer && r.status !== 'open') {
     toast(t('toast.accessDenied'), 'error');
     return;
   }
 
-  if (isHistory || (r.status === 'open' && !isClaimer && !isAdmin)) {
+  if (isHistory || (r.status === 'open' && !isClaimer)) {
     document.getElementById('roger-trip-content').innerHTML = renderRogerBoardCard(b, isHistory ? 'history' : 'open').replace(/<div class="action-btns mt-8">[\s\S]*?<\/div>/, '');
     document.getElementById('roger-trip-footer').innerHTML = `
       <button class="btn btn-ghost" onclick="closeModal('modal-roger-trip')">${t('btn.cancel')}</button>
-      ${r.status === 'open' && currentDriverProfile && r.requestedBy !== currentDriverProfile.id ? `<button class="btn btn-primary" onclick="closeModal('modal-roger-trip');claimRoger('${b.id}')">${t('btn.claimRoger')}</button>` : ''}`;
+      ${r.status === 'open' && getRogerUserId() && !rogerUserMatch(r.requestedBy) ? `<button class="btn btn-primary" onclick="closeModal('modal-roger-trip');claimRoger('${b.id}')">${t('btn.claimRoger')}</button>` : ''}`;
     openModal('modal-roger-trip');
     return;
   }

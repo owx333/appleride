@@ -1,0 +1,224 @@
+rules_version = '2';
+
+// AppleRider — Firestore Security Rules
+// Deploy: firebase deploy --only firestore:rules
+//
+// Access control document: settings/access
+// {
+//   admins: { "user-a@email.com": true, "user-b@email.com": true },
+//   driverEmails: { "driver@email.com": "D1234567890" }  // optional / future
+// }
+// Team users (Roger) = emails in admins. Each needs a Firebase Auth account.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function email() {
+      return request.auth.token.email.lower();
+    }
+
+    function accessExists() {
+      return exists(/databases/$(database)/documents/settings/access);
+    }
+
+    function access() {
+      return get(/databases/$(database)/documents/settings/access).data;
+    }
+
+    function isAdmin() {
+      return isSignedIn()
+        && accessExists()
+        && email() in access().admins;
+    }
+
+    function myDriverId() {
+      return access().driverEmails[email()];
+    }
+
+    function isDriver() {
+      return isSignedIn()
+        && accessExists()
+        && myDriverId() != null;
+    }
+
+    function isStaff() {
+      return isAdmin() || isDriver();
+    }
+
+    function driverBookingUpdateOk() {
+      return request.resource.data.diff(resource.data).affectedKeys()
+        .hasOnly(['status', 'updatedAt']);
+    }
+
+    function rogerField() {
+      return 'roger' in resource.data ? resource.data.roger : null;
+    }
+
+    function rogerOpen() {
+      return rogerField() != null && rogerField().status == 'open';
+    }
+
+    // Roger uses login email (team users) or legacy driver id
+    function rogerRequestedByMe() {
+      return rogerField() != null
+        && (rogerField().requestedBy == email() || rogerField().requestedBy == myDriverId());
+    }
+
+    function rogerClaimedByMe() {
+      return rogerField() != null
+        && (rogerField().claimedBy == email() || rogerField().claimedBy == myDriverId());
+    }
+
+    function adminRogerOpenOk() {
+      return isAdmin()
+        && request.resource.data.roger.status == 'open'
+        && request.resource.data.roger.requestedBy == email()
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['roger', 'updatedAt', 'ownerEmail']);
+    }
+
+    function adminRogerClaimOk() {
+      return isAdmin() && rogerOpen()
+        && request.resource.data.roger.status == 'claimed'
+        && request.resource.data.roger.claimedBy == email()
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['roger', 'status', 'updatedAt']);
+    }
+
+    function adminRogerTripOk() {
+      return isAdmin() && rogerClaimedByMe()
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['status', 'updatedAt', 'roger']);
+    }
+
+    function adminRogerCancelOk() {
+      return isAdmin() && rogerRequestedByMe()
+        && rogerField().status == 'open'
+        && request.resource.data.roger.status == 'none'
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['roger', 'updatedAt']);
+    }
+
+    function driverRogerOpenOk() {
+      return resource.data.driverId == myDriverId()
+        && request.resource.data.roger.status == 'open'
+        && request.resource.data.roger.requestedBy == myDriverId()
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['roger', 'updatedAt']);
+    }
+
+    function driverRogerClaimOk() {
+      return rogerOpen()
+        && request.resource.data.roger.status == 'claimed'
+        && request.resource.data.roger.claimedBy == myDriverId()
+        && request.resource.data.driverId == myDriverId()
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['roger', 'driverId', 'status', 'updatedAt']);
+    }
+
+    function driverRogerTripOk() {
+      return resource.data.driverId == myDriverId()
+        && rogerClaimedByMe()
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['status', 'updatedAt', 'roger']);
+    }
+
+    function driverRogerCancelOk() {
+      return rogerRequestedByMe()
+        && rogerField().status == 'open'
+        && request.resource.data.roger.status == 'none'
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['roger', 'updatedAt']);
+    }
+
+    match /settings/access {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && !accessExists();
+      allow update: if isAdmin();
+      allow delete: if false;
+    }
+
+    match /settings/app {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    match /settings/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    match /bookings/{bookingId} {
+      allow read: if isAdmin()
+        || (isDriver() && (
+          resource.data.driverId == myDriverId()
+          || rogerOpen()
+          || rogerRequestedByMe()
+          || rogerClaimedByMe()
+        ));
+
+      allow create: if isAdmin();
+
+      allow update: if isAdmin()
+        || (isDriver() && (
+          (resource.data.driverId == myDriverId()
+            && driverBookingUpdateOk()
+            && !rogerOpen()
+            && !(rogerField() != null && rogerField().status == 'claimed'))
+          || driverRogerOpenOk()
+          || driverRogerClaimOk()
+          || driverRogerTripOk()
+          || driverRogerCancelOk()
+        ));
+
+      allow delete: if isAdmin();
+    }
+
+    match /customers/{customerId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /drivers/{driverId} {
+      allow read: if isAdmin()
+        || (isDriver() && driverId == myDriverId());
+      allow write: if isAdmin();
+    }
+
+    match /vehicles/{vehicleId} {
+      allow read: if isStaff();
+      allow write: if isAdmin();
+    }
+
+    match /income/{incomeId} {
+      allow read: if isAdmin()
+        || (isDriver() && resource.data.driverId == myDriverId());
+
+      allow create: if isAdmin()
+        || (isDriver() && request.resource.data.driverId == myDriverId());
+
+      allow update, delete: if isAdmin()
+        || (isDriver() && resource.data.driverId == myDriverId());
+    }
+
+    match /expenses/{expenseId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /closings/{closingId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /notifications/{notifId} {
+      allow read: if isStaff();
+      allow write: if isAdmin();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
