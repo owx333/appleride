@@ -1008,8 +1008,10 @@
 
     <!-- REPORTS PAGE -->
     <div class="page" id="page-reports">
+      <div class="section-title mb-16" data-i18n="page.reports">Reports</div>
       <div class="flex gap-8 mb-16" style="flex-wrap:wrap;align-items:center">
-        <select class="form-control" style="width:160px" id="reports-driver-filter" onchange="renderReports(document.querySelector('#report-tabs .tab.active')?.dataset?.tab || 'summary')">
+        <span class="toolbar-label" data-i18n="filter.driver">Driver</span>
+        <select class="form-control" style="width:180px" id="reports-driver-filter" onchange="renderReports(document.querySelector('#report-tabs .tab.active')?.dataset?.tab || 'summary')">
           <option value="" data-i18n="filter.allDrivers">All Drivers</option>
         </select>
       </div>
@@ -1601,7 +1603,7 @@ const I18N = {
     'form.email':'Email','form.password':'Password','form.date':'Date','form.actions':'Actions',
     'mobile.home':'Home','mobile.bookings':'Bookings','mobile.mytrips':'My Trips','mobile.income':'Income','mobile.calendar':'Calendar',
     'date.thisMonth':'This Month','date.month':'Month','date.label':'📅 Month',
-    'filter.allDrivers':'All Drivers','filter.category':'Category',
+    'filter.allDrivers':'All Drivers','filter.driver':'Driver','filter.category':'Category',
     'toolbar.excel':'↓ Excel','toolbar.importExcel':'↑ Import Excel',
     'notif.yesterdayTitle':'Yesterday Summary ({date})',
     'notif.yesterdayMsg':'Income RM {income} · Completed trips {trips}',
@@ -1635,6 +1637,8 @@ const I18N = {
     'pickup':'Pickup','dropoff':'Dropoff','customer':'Customer','balance':'Bal',
     'allTypes':'All Types','allStatus':'All Status',
     'reports.summary':'Summary','reports.income':'Income','reports.expense':'Expenses','reports.booking':'Bookings',
+    'reports.incomeTotal':'Period Income','reports.incomeRecords':'Income Records','reports.incomeByDriver':'Income by Driver',
+    'reports.noIncomeInPeriod':'No income in selected period','reports.noIncomeInPeriodSub':'Completed bookings sync automatically — try another month or driver.',
     'loader.text':'Loading your workspace...',
     'th.bookingId':'Booking ID','th.customer':'Customer','th.type':'Type','th.dateTime':'Date & Time',
     'th.pickup':'Pickup','th.dropoff':'Dropoff','th.amount':'Amount','th.payment':'Payment','th.status':'Status',
@@ -1750,7 +1754,7 @@ const I18N = {
     'form.email':'邮箱','form.password':'密码','form.date':'日期','form.actions':'操作',
     'mobile.home':'首页','mobile.bookings':'订单','mobile.mytrips':'行程','mobile.income':'收入','mobile.calendar':'日历',
     'date.thisMonth':'本月','date.month':'月份','date.label':'📅 月份',
-    'filter.allDrivers':'全部司机','filter.category':'类别',
+    'filter.allDrivers':'全部司机','filter.driver':'司机','filter.category':'类别',
     'toolbar.excel':'↓ Excel','toolbar.importExcel':'↑ 导入 Excel',
     'notif.yesterdayTitle':'昨日汇总 ({date})',
     'notif.yesterdayMsg':'收入 RM {income} · 完成行程 {trips}',
@@ -1784,6 +1788,8 @@ const I18N = {
     'pickup':'上车','dropoff':'下车','customer':'客户','balance':'余额',
     'allTypes':'全部类型','allStatus':'全部状态',
     'reports.summary':'汇总','reports.income':'收入','reports.expense':'支出','reports.booking':'订单',
+    'reports.incomeTotal':'期间收入','reports.incomeRecords':'收入明细','reports.incomeByDriver':'司机收入',
+    'reports.noIncomeInPeriod':'所选期间无收入','reports.noIncomeInPeriodSub':'已完成订单会自动同步收入 — 请换月份或司机试试。',
     'loader.text':'正在加载工作区...',
     'th.bookingId':'订单号','th.customer':'客户','th.type':'类型','th.dateTime':'日期时间',
     'th.pickup':'上车点','th.dropoff':'下车点','th.amount':'金额','th.payment':'付款','th.status':'状态',
@@ -2295,8 +2301,7 @@ async function ensureBookingIncome(booking, { notify = true } = {}) {
 
 let bookingIncomeBackfillDone = false;
 async function backfillMissingBookingIncomes() {
-  if (bookingIncomeBackfillDone || !db.bookings.length) return;
-  bookingIncomeBackfillDone = true;
+  if (!db.bookings.length) return;
   for (const b of db.bookings) {
     if (b.status !== 'Completed') continue;
     if (!hasIncomeForBooking(b.id)) {
@@ -2307,6 +2312,16 @@ async function backfillMissingBookingIncomes() {
     if (inc && inc.type !== 'Private Booking') {
       await saveRecord('income', { ...inc, type: 'Private Booking' });
     }
+    if (inc && b.driverId && inc.driverId !== b.driverId) {
+      await saveRecord('income', { ...inc, driverId: b.driverId });
+    }
+  }
+  bookingIncomeBackfillDone = true;
+}
+
+async function ensureAllBookingIncomes() {
+  for (const b of db.bookings) {
+    if (b.status === 'Completed') await ensureBookingIncome(b, { notify: false });
   }
 }
 
@@ -2678,10 +2693,10 @@ window.exportDashboardSnapshot = function() {
 window.exportReportSnapshot = function() {
   const { from, to } = getSectionDateRange('reports');
   const driverF = document.getElementById('reports-driver-filter')?.value || '';
-  let income = filterByDateRange(db.income, 'date', from, to);
-  if (driverF) income = income.filter(i => i.driverId === driverF);
+  const income = getReportIncome(from, to, driverF);
   const expenses = filterByDateRange(db.expenses, 'date', from, to);
-  const bookings = filterByDateRange(db.bookings, 'date', from, to);
+  let bookings = filterByDateRange(db.bookings, 'date', from, to);
+  if (driverF) bookings = bookings.filter(b => b.driverId === driverF);
   const summary = [{
     period: `${from} — ${to}`,
     driver: driverF ? (db.drivers.find(d => d.id === driverF)?.name || driverF) : t('filter.allDrivers'),
@@ -3101,10 +3116,10 @@ function nav(page) {
   else if (page === 'vehicles') renderVehicles();
   else if (page === 'mytrips') renderMyTrips();
   else if (page === 'roger') renderRoger();
-  else if (page === 'income') renderIncome();
+  else if (page === 'income') ensureAllBookingIncomes().then(() => renderIncome());
   else if (page === 'expenses') renderExpenses();
   else if (page === 'closing') renderClosing();
-  else if (page === 'reports') renderReports('summary');
+  else if (page === 'reports') ensureAllBookingIncomes().then(() => renderReports('summary'));
   else if (page === 'notifications') renderNotifications();
   else if (page === 'settings') { loadSettingsForm(); renderSettingsTypes(); renderTeamUsers(); checkFirebaseConnection(); }
   document.querySelectorAll('.mobile-nav-item').forEach(btn => btn.classList.toggle('active', btn.dataset.page === page));
@@ -3608,11 +3623,11 @@ function renderIncome() {
   populateDriverFilters();
   const typeF = document.getElementById('income-type-filter')?.value || '';
   const driverF = document.getElementById('income-driver-filter')?.value || '';
-  let list = getSectionData('income').sort((a,b) => (b.date||'').localeCompare(a.date||''));
+  const { from, to } = getSectionDateRange('income');
+  let list = getReportIncome(from, to, driverF);
   if (typeF) list = list.filter(i => i.type === typeF);
-  if (driverF) list = list.filter(i => i.driverId === driverF);
-  let monthItems = getSectionMonthItems(db.income, 'income');
-  if (driverF) monthItems = monthItems.filter(i => i.driverId === driverF);
+  let monthItems = getReportIncome(from, to, driverF);
+  if (typeF) monthItems = monthItems.filter(i => i.type === typeF);
   const monthTotal = sumAmount(monthItems);
   const avg = monthItems.length ? monthTotal / monthItems.length : 0;
   animateStat('income-month-total', monthTotal, { prefix: 'RM ', decimals: 2 });
@@ -3621,13 +3636,14 @@ function renderIncome() {
   const driverSel = document.getElementById('i-driver');
   if (driverSel) driverSel.innerHTML = '<option value="">Select Driver</option>' + db.drivers.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
   document.getElementById('income-tbody').innerHTML = list.map(i => {
-    const driver = db.drivers.find(d => d.id === i.driverId);
-    return `<tr><td>${i.date}</td><td><span class="badge badge-green">${i.type}</span></td><td class="text-sm">${i.desc || '—'}</td><td class="text-sm">${driver?.name || '—'}</td><td class="text-sm text-muted">${i.payment}</td><td class="font-bold green">RM ${parseFloat(i.amount).toFixed(2)}</td>
-      <td class="table-actions"><div class="action-btns">
-        <button class="btn btn-ghost btn-sm" onclick="generateIncomeReceipt('${i.id}')" title="${t('btn.generateReceipt')}">📄</button>
+    const driver = db.drivers.find(d => d.id === incomeDriverId(i));
+    const actions = i.fromBooking
+      ? '<span class="text-xs text-dim">Booking</span>'
+      : `<button class="btn btn-ghost btn-sm" onclick="generateIncomeReceipt('${i.id}')" title="${t('btn.generateReceipt')}">📄</button>
         <button class="btn btn-ghost btn-sm" onclick="editIncome('${i.id}')">${t('btn.edit')}</button>
-        <button class="btn btn-danger btn-sm" onclick="deleteIncome('${i.id}')">${t('btn.del')}</button>
-      </div></td></tr>`;
+        <button class="btn btn-danger btn-sm" onclick="deleteIncome('${i.id}')">${t('btn.del')}</button>`;
+    return `<tr><td>${i.date}</td><td><span class="badge badge-green">${i.type}</span></td><td class="text-sm">${i.desc || '—'}</td><td class="text-sm">${driver?.name || '—'}</td><td class="text-sm text-muted">${i.payment}</td><td class="font-bold green">RM ${parseFloat(i.amount).toFixed(2)}</td>
+      <td class="table-actions"><div class="action-btns">${actions}</div></td></tr>`;
   }).join('') || `<tr><td colspan="7">${emptyState('income', t('empty.noIncome'), t('empty.noIncomeSub'), `<button class="btn btn-primary btn-sm" onclick="openIncomeModal()">${t('btn.addIncome')}</button>`)}</td></tr>`;
 }
 window.renderIncome = renderIncome;
@@ -3767,22 +3783,82 @@ window.saveClosing = async function() {
 // ============================================================
 // REPORTS
 // ============================================================
+function driverNameById(id) {
+  if (!id) return '—';
+  return db.drivers.find(d => d.id === id)?.name || id;
+}
+
+function incomeBookingId(income) {
+  if (income.bookingId) return income.bookingId;
+  if (String(income.id || '').startsWith('INC-')) return String(income.id).slice(4);
+  return '';
+}
+
+function incomeDriverId(income) {
+  if (income.driverId) return income.driverId;
+  const bookingId = incomeBookingId(income);
+  if (!bookingId) return '';
+  return db.bookings.find(b => b.id === bookingId)?.driverId || '';
+}
+
+function incomeMatchesDriver(income, driverF) {
+  if (!driverF) return true;
+  if (incomeDriverId(income) === driverF) return true;
+  return false;
+}
+
+function getReportIncome(from, to, driverF) {
+  const seenBookingIds = new Set();
+  let items = filterByDateRange(db.income, 'date', from, to).map(i => ({ ...i }));
+  items.forEach(i => {
+    const bid = incomeBookingId(i);
+    if (bid) seenBookingIds.add(bid);
+  });
+
+  filterByDateRange(db.bookings, 'date', from, to)
+    .filter(b => b.status === 'Completed' && (parseFloat(b.amount) || 0) > 0)
+    .forEach(b => {
+      if (seenBookingIds.has(b.id)) return;
+      const cust = db.customers.find(c => c.id === b.customerId);
+      items.push({
+        id: bookingIncomeId(b.id),
+        bookingId: b.id,
+        date: normalizeDateStr(b.date),
+        type: 'Private Booking',
+        desc: [b.id, cust?.name, [b.pickup, b.dropoff].filter(Boolean).join(' → ')].filter(Boolean).join(' · '),
+        driverId: b.driverId || '',
+        payment: b.paymentMethod || 'Cash',
+        amount: parseFloat(b.amount) || 0,
+        fromBooking: true
+      });
+      seenBookingIds.add(b.id);
+    });
+
+  if (driverF) items = items.filter(i => incomeMatchesDriver(i, driverF));
+  return items.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+}
+
 function renderReports(tab) {
   document.querySelectorAll('#report-tabs .tab').forEach((t,i) => { t.classList.toggle('active', ['summary','income','expense','booking'][i] === tab); });
   populateDriverFilters();
   const { from, to } = getSectionDateRange('reports');
   const driverF = document.getElementById('reports-driver-filter')?.value || '';
-  let rIncome = filterByDateRange(db.income, 'date', from, to);
-  if (driverF) rIncome = rIncome.filter(i => i.driverId === driverF);
+  const rIncome = getReportIncome(from, to, driverF);
   const rExpenses = filterByDateRange(db.expenses, 'date', from, to);
-  const rBookings = filterByDateRange(db.bookings, 'date', from, to);
+  let rBookings = filterByDateRange(db.bookings, 'date', from, to);
+  if (driverF) rBookings = rBookings.filter(b => b.driverId === driverF);
   const el = document.getElementById('report-content');
   if (tab === 'summary') {
     const totalIncome = sumAmount(rIncome);
     const totalExpenses = sumAmount(rExpenses);
     const netProfit = totalIncome - totalExpenses;
+    const byDriver = {};
+    rIncome.forEach(i => {
+      const name = driverNameById(incomeDriverId(i));
+      byDriver[name] = (byDriver[name] || 0) + (parseFloat(i.amount) || 0);
+    });
     el.innerHTML = `<div class="grid-4 mb-16">
-      <div class="stat-card green stagger-item"><div class="stat-label">Period Income</div><div class="stat-value green">RM ${totalIncome.toFixed(2)}</div></div>
+      <div class="stat-card green stagger-item"><div class="stat-label">${t('reports.incomeTotal')}</div><div class="stat-value green">RM ${totalIncome.toFixed(2)}</div></div>
       <div class="stat-card red stagger-item"><div class="stat-label">Period Expenses</div><div class="stat-value red">RM ${totalExpenses.toFixed(2)}</div></div>
       <div class="stat-card purple stagger-item"><div class="stat-label">Net Profit</div><div class="stat-value purple">RM ${netProfit.toFixed(2)}</div></div>
       <div class="stat-card blue stagger-item"><div class="stat-label">Bookings</div><div class="stat-value blue">${rBookings.length}</div></div>
@@ -3793,18 +3869,42 @@ function renderReports(tab) {
       <div class="detail-row"><div class="detail-label">Expenses</div><div class="detail-value red font-bold">RM ${totalExpenses.toFixed(2)}</div></div>
       <div class="detail-row"><div class="detail-label">Net Profit</div><div class="detail-value font-bold" style="color:${netProfit>=0?'var(--green)':'var(--red)'}">RM ${netProfit.toFixed(2)}</div></div>
     </div>
+    <div class="card"><div class="section-title mb-16">${t('reports.incomeByDriver')}</div>
+      ${Object.entries(byDriver).sort((a,b)=>b[1]-a[1]).map(([name, amt]) => `<div class="detail-row"><div class="detail-label text-sm">${name}</div><div class="detail-value green font-bold">RM ${amt.toFixed(2)}</div></div>`).join('') || `<div class="text-dim text-sm">${t('reports.noIncomeInPeriod')}</div>`}
+    </div>
     <div class="card"><div class="section-title mb-16">Bookings Summary</div>
       ${['Completed','Confirmed','New','Cancelled','No Show'].map(s => `<div class="detail-row"><div class="detail-label">${s}</div><div class="detail-value font-bold">${rBookings.filter(b => b.status === s).length}</div></div>`).join('')}
-    </div>
-    <div class="card"><div class="section-title mb-16">Top Customers</div>
-      ${db.customers.map(c => ({ name: c.name, spent: rBookings.filter(b => b.customerId===c.id).reduce((s,b)=>s+parseFloat(b.amount||0),0) })).sort((a,b)=>b.spent-a.spent).slice(0,5).map(c => `<div class="detail-row"><div class="detail-label text-sm">${c.name}</div><div class="detail-value green font-bold">RM ${c.spent.toFixed(2)}</div></div>`).join('') || '<div class="text-dim text-sm">No data</div>'}
     </div></div>`;
     staggerReveal(el);
   } else if (tab === 'income') {
     const byType = {};
-    rIncome.forEach(i => { byType[i.type] = (byType[i.type]||0) + (parseFloat(i.amount)||0); });
+    const byDriver = {};
+    rIncome.forEach(i => {
+      byType[i.type || 'Other'] = (byType[i.type]||0) + (parseFloat(i.amount)||0);
+      const dName = driverNameById(incomeDriverId(i));
+      byDriver[dName] = (byDriver[dName]||0) + (parseFloat(i.amount)||0);
+    });
     const incomeTotal = sumAmount(rIncome);
-    el.innerHTML = `<div class="card"><div class="section-title mb-16">Income by Type</div><div class="table-wrap"><table><thead><tr><th>Type</th><th>Total (RM)</th><th>%</th></tr></thead><tbody>${Object.entries(byType).sort((a,b)=>b[1]-a[1]).map(([type,amt]) => { const pct = incomeTotal ? (amt/incomeTotal*100).toFixed(1) : 0; return `<tr><td>${type}</td><td class="font-bold green">RM ${amt.toFixed(2)}</td><td><div class="flex-center gap-8"><div class="progress-bar" style="flex:1"><div class="progress-fill" style="width:${pct}%;background:var(--green)"></div></div><span class="text-sm">${pct}%</span></div></td></tr>`; }).join('')}</tbody></table></div></div>`;
+    const typeRows = Object.entries(byType).sort((a,b)=>b[1]-a[1]).map(([type,amt]) => {
+      const pct = incomeTotal ? (amt/incomeTotal*100).toFixed(1) : 0;
+      return `<tr><td>${type}</td><td class="font-bold green">RM ${amt.toFixed(2)}</td><td><div class="flex-center gap-8"><div class="progress-bar" style="flex:1"><div class="progress-fill" style="width:${pct}%;background:var(--green)"></div></div><span class="text-sm">${pct}%</span></div></td></tr>`;
+    }).join('');
+    const driverRows = Object.entries(byDriver).sort((a,b)=>b[1]-a[1]).map(([name,amt]) => `<tr><td>${name}</td><td class="font-bold green">RM ${amt.toFixed(2)}</td></tr>`).join('');
+    const detailRows = rIncome.map(i => `<tr>
+      <td>${i.date||'—'}</td><td><span class="badge badge-green">${i.type||'—'}</span></td>
+      <td class="text-sm">${driverNameById(incomeDriverId(i))}</td>
+      <td class="text-sm">${i.desc || incomeBookingId(i) || '—'}</td>
+      <td class="font-bold green">RM ${parseFloat(i.amount||0).toFixed(2)}</td>
+    </tr>`).join('');
+    el.innerHTML = `<div class="grid-2 mb-16">
+      <div class="stat-card green"><div class="stat-label">${t('reports.incomeTotal')}</div><div class="stat-value green">RM ${incomeTotal.toFixed(2)}</div></div>
+      <div class="stat-card blue"><div class="stat-label">${t('reports.incomeRecords')}</div><div class="stat-value blue">${rIncome.length}</div></div>
+    </div>
+    <div class="grid-2 mb-16">
+      <div class="card"><div class="section-title mb-16">Income by Type</div><div class="table-wrap"><table><thead><tr><th>${t('th.type')}</th><th>${t('th.amount')}</th><th>%</th></tr></thead><tbody>${typeRows || `<tr><td colspan="3">${t('reports.noIncomeInPeriod')}</td></tr>`}</tbody></table></div></div>
+      <div class="card"><div class="section-title mb-16">${t('reports.incomeByDriver')}</div><div class="table-wrap"><table><thead><tr><th>${t('th.driver')}</th><th>${t('th.amount')}</th></tr></thead><tbody>${driverRows || `<tr><td colspan="2">${t('reports.noIncomeInPeriod')}</td></tr>`}</tbody></table></div></div>
+    </div>
+    <div class="card"><div class="section-title mb-16">${t('reports.incomeRecords')}</div><div class="table-wrap"><table><thead><tr><th>${t('th.date')||'Date'}</th><th>${t('th.type')}</th><th>${t('th.driver')}</th><th>${t('th.description')}</th><th>${t('th.amount')}</th></tr></thead><tbody>${detailRows || `<tr><td colspan="5">${emptyState('income', t('reports.noIncomeInPeriod'), t('reports.noIncomeInPeriodSub'))}</td></tr>`}</tbody></table></div></div>`;
   } else if (tab === 'expense') {
     const byType = {};
     rExpenses.forEach(e => { byType[e.type] = (byType[e.type]||0) + (parseFloat(e.amount)||0); });
