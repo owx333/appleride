@@ -2575,7 +2575,20 @@ function initMonthPickers() {
       el.innerHTML = buildMonthSelectOptions(cur);
     }
   });
+  const calKey = getSelectedMonthKey('calendar');
+  if (calKey) {
+    const [y, m] = calKey.split('-').map(Number);
+    calYear = y;
+    calMonth = m - 1;
+  }
   populateDriverFilters();
+}
+
+function syncCalendarMonthPicker() {
+  const el = document.getElementById('calendar-month-picker');
+  if (!el) return;
+  const key = `${calYear}-${String(calMonth + 1).padStart(2, '0')}`;
+  if (el.querySelector(`option[value="${key}"]`)) el.value = key;
 }
 
 function getMonthRange() {
@@ -2705,7 +2718,7 @@ window.exportSection = function(section) {
   let data;
   if (section === 'calendar') {
     const prefix = `${calYear}-${String(calMonth + 1).padStart(2, '0')}`;
-    data = db.bookings.filter(b => (b.date || '').startsWith(prefix));
+    data = db.bookings.filter(b => normalizeDateStr(b.date).startsWith(prefix));
   } else {
     data = getSectionData(section);
   }
@@ -2716,7 +2729,7 @@ window.exportSection = function(section) {
 window.exportDashboardSnapshot = function() {
   const { from, to } = getSectionDateRange('dashboard');
   const bookings = filterByDateRange(db.bookings, 'date', from, to);
-  const income = filterByDateRange(db.income, 'date', from, to);
+  const income = getReportIncome(from, to, '');
   const expenses = filterByDateRange(db.expenses, 'date', from, to);
   const summary = [{
     period: `${from} — ${to}`,
@@ -3098,7 +3111,7 @@ function startListeners() {
   subscribeCol('drivers',    () => { applyRoleUI(); if(isPageActive('drivers')) renderDrivers(); if(isPageActive('mytrips')) renderMyTrips(); if(isPageActive('dashboard')) renderDashboard(); });
   subscribeCol('vehicles',   () => { if(isPageActive('vehicles')) renderVehicles(); });
   subscribeCol('bookings',   () => { if(isPageActive('dashboard')) renderDashboard(); renderCalendar(); if(isPageActive('bookings')) renderBookings(); if(isPageActive('closing')) renderClosing(); if(isPageActive('mytrips')) renderMyTrips(); if(isPageActive('roger')) renderRoger(); updateRogerBadge(); });
-  subscribeCol('income',     () => { if(isPageActive('dashboard')) renderDashboard(); if(isPageActive('income')) renderIncome(); if(isPageActive('closing')) renderClosing(); if(isPageActive('reports')) renderReports(document.querySelector('#report-tabs .tab.active')?.dataset?.tab || 'summary'); });
+  subscribeCol('income',     () => { if(isPageActive('dashboard')) renderDashboard(); if(isPageActive('income')) renderIncome(); if(isPageActive('drivers')) renderDrivers(); if(isPageActive('closing')) renderClosing(); if(isPageActive('reports')) renderReports(document.querySelector('#report-tabs .tab.active')?.dataset?.tab || 'summary'); });
   subscribeCol('expenses',   () => { if(isPageActive('dashboard')) renderDashboard(); if(isPageActive('expenses')) renderExpenses(); if(isPageActive('closing')) renderClosing(); if(isPageActive('reports')) renderReports(document.querySelector('#report-tabs .tab.active')?.dataset?.tab || 'summary'); });
   subscribeCol('closings',   () => {});
   subscribeCol('notifications', () => { if(isPageActive('notifications')) renderNotifications(); updateBadges(); });
@@ -3222,7 +3235,7 @@ function getSectionMonthItems(items, section, dateField = 'date') {
 function renderDashboard() {
   const { from, to } = getSectionDateRange('dashboard');
   const rangeBookings = filterByDateRange(db.bookings, 'date', from, to);
-  const rangeIncome = filterByDateRange(db.income, 'date', from, to);
+  const rangeIncome = getReportIncome(from, to, '');
   const rangeExpenses = filterByDateRange(db.expenses, 'date', from, to);
   const totalIncome = sumAmount(rangeIncome);
   const totalExpenses = sumAmount(rangeExpenses);
@@ -3262,18 +3275,22 @@ function renderDashboard() {
   const months = currentLang === 'zh'
     ? ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月']
     : ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  const now = new Date();
+  const selectedKey = getSelectedMonthKey('dashboard');
+  const [baseY, baseM] = selectedKey.split('-').map(Number);
   const monthData = [];
   for (let i = 5; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const m = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-    const total = sumAmount(db.income.filter(inc => (inc.date || '').startsWith(m)));
-    monthData.push({ label: months[d.getMonth()], value: total });
+    const d = new Date(baseY, baseM - 1 - i, 1);
+    const m = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    const monthRange = getMonthRangeFromKey(m);
+    const total = sumAmount(getReportIncome(monthRange.from, monthRange.to, ''));
+    monthData.push({ label: months[d.getMonth()], value: total, key: m });
   }
   const maxVal = Math.max(...monthData.map(m => m.value), 1);
+  const selectedMonth = selectedKey;
   document.getElementById('monthly-chart').innerHTML = monthData.map(m => `
-    <div class="chart-bar-wrap">
-      <div class="chart-bar" style="height:${Math.max(8,(m.value/maxVal)*74)}px;background:linear-gradient(to top,var(--accent),var(--accent2))"></div>
+    <div class="chart-bar-wrap" title="RM ${formatMoney(m.value)}">
+      <div class="chart-bar" style="height:${Math.max(8,(m.value/maxVal)*74)}px;background:linear-gradient(to top,var(--accent),var(--accent2));opacity:${m.key === selectedMonth ? 1 : 0.55}"></div>
+      <span class="chart-bar-label">${m.value > 0 ? 'RM' + (m.value >= 1000 ? (m.value/1000).toFixed(1) + 'k' : Math.round(m.value)) : ''}</span>
     </div>
   `).join('');
   document.getElementById('monthly-labels').innerHTML = monthData.map(m => `<span class="text-xs text-dim">${m.label}</span>`).join('');
@@ -3321,8 +3338,8 @@ function renderCalendar() {
   document.getElementById('cal-grid').innerHTML = html;
 }
 window.renderCalendar = renderCalendar;
-window.calPrev = function() { calMonth--; if (calMonth < 0) { calMonth = 11; calYear--; } renderCalendar(); };
-window.calNext = function() { calMonth++; if (calMonth > 11) { calMonth = 0; calYear++; } renderCalendar(); };
+window.calPrev = function() { calMonth--; if (calMonth < 0) { calMonth = 11; calYear--; } syncCalendarMonthPicker(); renderCalendar(); };
+window.calNext = function() { calMonth++; if (calMonth > 11) { calMonth = 0; calYear++; } syncCalendarMonthPicker(); renderCalendar(); };
 window.calDayClick = function(date) { document.getElementById('b-date').value = date; openBookingModal(); };
 
 // ============================================================
@@ -3568,8 +3585,8 @@ window.deleteCustomer = async function(id) {
 function renderDrivers() {
   const { from, to } = getSectionDateRange('drivers');
   document.getElementById('drivers-grid').innerHTML = db.drivers.map(d => {
-    const trips = db.bookings.filter(b => b.driverId === d.id && b.status === 'Completed' && b.date >= from && b.date <= to).length;
-    const driverIncome = sumAmount(db.income.filter(i => i.driverId === d.id && i.date >= from && i.date <= to));
+    const trips = filterByDateRange(db.bookings.filter(b => b.driverId === d.id && b.status === 'Completed'), 'date', from, to).length;
+    const driverIncome = sumAmount(getReportIncome(from, to, d.id));
     const initials = d.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
     return `<div class="driver-card stagger-item">
       <div class="driver-head">
@@ -3826,34 +3843,37 @@ window.saveExpense = async function() {
 // ============================================================
 function renderClosing() {
   const { from, to } = getSectionDateRange('closing');
-  const periodIncome = filterByDateRange(db.income, 'date', from, to);
+  const periodIncome = getReportIncome(from, to, '');
   const periodExpenses = filterByDateRange(db.expenses, 'date', from, to);
   const totalIncome = sumAmount(periodIncome);
   const totalExpenses = sumAmount(periodExpenses);
   const profit = totalIncome - totalExpenses;
-  document.getElementById('close-income').textContent = 'RM '+totalIncome.toFixed(2);
-  document.getElementById('close-expenses').textContent = 'RM '+totalExpenses.toFixed(2);
-  document.getElementById('close-profit').textContent = (profit >= 0 ? '+' : '') + 'RM '+profit.toFixed(2);
+  document.getElementById('close-income').textContent = 'RM '+formatMoney(totalIncome);
+  document.getElementById('close-expenses').textContent = 'RM '+formatMoney(totalExpenses);
+  document.getElementById('close-profit').textContent = (profit >= 0 ? '+' : '') + 'RM '+formatMoney(profit);
   document.getElementById('close-profit').style.color = profit >= 0 ? 'var(--green)' : 'var(--red)';
   document.getElementById('close-profit-pill').innerHTML = `<div class="profit-pill ${profit>=0?'up':'down'}">${profit>=0?'▲ Profit':'▼ Loss'}</div>`;
   const incomeByType = {};
-  periodIncome.forEach(i => { incomeByType[i.type] = (incomeByType[i.type]||0) + (parseFloat(i.amount)||0); });
+  periodIncome.forEach(i => { incomeByType[i.type] = (incomeByType[i.type]||0) + parseAmount(i.amount); });
   document.getElementById('close-income-breakdown').innerHTML = Object.entries(incomeByType).map(([type, amt]) => `<div class="flex-center" style="justify-content:space-between;margin-bottom:6px"><span class="text-sm text-muted">${type}</span><span class="text-sm font-bold green">RM ${amt.toFixed(2)}</span></div>`).join('') || '<div class="text-xs text-dim">No income in period</div>';
   const expByType = {};
   periodExpenses.forEach(e => { expByType[e.type] = (expByType[e.type]||0) + parseAmount(e.amount); });
   document.getElementById('close-expense-breakdown').innerHTML = Object.entries(expByType).map(([type, amt]) => `<div class="flex-center" style="justify-content:space-between;margin-bottom:6px"><span class="text-sm text-muted">${type}</span><span class="text-sm font-bold red">RM ${amt.toFixed(2)}</span></div>`).join('') || '<div class="text-xs text-dim">No expenses in period</div>';
   const periodBookings = filterByDateRange(db.bookings, 'date', from, to);
   const completedTrips = periodBookings.filter(b => b.status === 'Completed').length;
-  const outstanding = periodBookings.filter(b => parseFloat(b.balance) > 0).reduce((s,b) => s + (parseFloat(b.balance)||0), 0);
+  const outstanding = periodBookings.filter(b => parseAmount(b.balance) > 0).reduce((s,b) => s + parseAmount(b.balance), 0);
   document.getElementById('close-trips').textContent = completedTrips;
-  document.getElementById('close-outstanding').textContent = 'RM '+outstanding.toFixed(2);
-  document.getElementById('close-newcust').textContent = db.customers.filter(c => c.createdAt >= from && c.createdAt <= to).length;
+  document.getElementById('close-outstanding').textContent = 'RM '+formatMoney(outstanding);
+  document.getElementById('close-newcust').textContent = db.customers.filter(c => {
+    const d = normalizeDateStr(c.createdAt);
+    return d >= from && d <= to;
+  }).length;
 }
 window.renderClosing = renderClosing;
 
 window.saveClosing = async function() {
   const { from, to } = getSectionDateRange('closing');
-  const periodIncome = filterByDateRange(db.income, 'date', from, to);
+  const periodIncome = getReportIncome(from, to, '');
   const periodExpenses = filterByDateRange(db.expenses, 'date', from, to);
   const totalIncome = sumAmount(periodIncome);
   const totalExpenses = sumAmount(periodExpenses);
