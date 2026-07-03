@@ -94,6 +94,8 @@
   .btn-danger:hover { background: rgba(239,68,68,0.25); }
   .btn-sm { padding: 5px 10px; font-size: 12px; }
   .btn-success { background: rgba(16,185,129,0.15); color: var(--green); border: 1px solid rgba(16,185,129,0.3); }
+  .btn-whatsapp { background: rgba(37,211,102,0.15); color: #128C7E; border: 1px solid rgba(37,211,102,0.35); }
+  .btn-whatsapp:hover { background: rgba(37,211,102,0.28); transform: translateY(-1px); }
 
   /* CARDS */
   .card { background: var(--glass); backdrop-filter: blur(16px) saturate(160%); -webkit-backdrop-filter: blur(16px) saturate(160%); border: 1px solid var(--glass-border); border-radius: var(--radius-lg); padding: 20px; box-shadow: var(--glass-shadow); transition: transform var(--dur-normal) var(--ease-out-expo), box-shadow var(--dur-normal) var(--ease-out-expo), border-color var(--dur-fast); will-change: transform; }
@@ -1100,6 +1102,16 @@
           <button class="btn btn-primary" onclick="saveBizSettings()" data-i18n="settings.saveProfile">Save Profile</button>
         </div>
         <div class="card">
+          <div class="section-title mb-16" data-i18n="settings.whatsapp">WhatsApp Message</div>
+          <div class="text-sm text-muted mb-8" data-i18n="settings.whatsappSub">Default message when contacting customers from a booking</div>
+          <div class="form-group">
+            <label class="form-label" data-i18n="settings.whatsappTemplate">Message Template</label>
+            <textarea class="form-control" id="setting-whatsapp-template" rows="3" placeholder="您好{name}，您预定的载送服务在{whenLabel}（{dateShort}，{time}），我{whenLabel}准时过来接您哦！谢谢您😊"></textarea>
+            <div class="text-xs text-dim mt-4" data-i18n="settings.whatsappPlaceholders">Placeholders: {name}, {date}, {dateShort}, {time}, {whenLabel}, {pickup}, {dropoff}</div>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="saveWhatsAppSettings()" data-i18n="settings.saveWhatsapp">Save Template</button>
+        </div>
+        <div class="card">
           <div class="section-title mb-16" data-i18n="settings.bookingTypes">Booking Types</div>
           <div class="text-sm text-muted mb-8" data-i18n="settings.bookingTypesSub">Manage booking types available when creating bookings</div>
           <div class="type-tags" id="settings-booking-types"></div>
@@ -1173,6 +1185,10 @@
             </label>
             <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
               <input type="checkbox" checked> <span class="text-sm" data-i18n="settings.notifOutstanding">Outstanding balance alerts</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+              <input type="checkbox" id="setting-yesterday-notif" checked onchange="appSettings.yesterdayNotifEnabled=this.checked;saveAppSettings()">
+              <span class="text-sm" data-i18n="settings.notifYesterday">Previous day summary on login</span>
             </label>
           </div>
           <hr class="divider">
@@ -1598,7 +1614,7 @@ const I18N = {
     'section.outstanding':'Outstanding Payments','section.quickActions':'Quick Actions',
     'btn.viewAll':'View All','btn.newBooking':'+ New Booking','btn.recordExpense':'+ Record Expense','btn.addIncome':'+ Add Income',
     'btn.dailyClose':'🔐 Daily Close','btn.login':'Login','btn.logout':'Logout','btn.save':'Save','btn.cancel':'Cancel',
-    'btn.edit':'Edit','btn.del':'Del','btn.add':'Add','btn.viewDetails':'View Details','btn.onTheWay':'On The Way',
+    'btn.edit':'Edit','btn.del':'Del','btn.add':'Add','btn.viewDetails':'View Details','btn.onTheWay':'On The Way','btn.whatsapp':'WhatsApp',
     'login.title':'AppleRide','login.sub':'Transport Management System','login.secure':'AppleRide V1.0 · Secure Login',
     'form.email':'Email','form.password':'Password','form.date':'Date','form.actions':'Actions',
     'mobile.home':'Home','mobile.bookings':'Bookings','mobile.mytrips':'My Trips','mobile.income':'Income','mobile.calendar':'Calendar',
@@ -1606,7 +1622,9 @@ const I18N = {
     'filter.allDrivers':'All Drivers','filter.driver':'Driver','filter.category':'Category',
     'toolbar.excel':'↓ Excel','toolbar.importExcel':'↑ Import Excel',
     'notif.yesterdayTitle':'Yesterday Summary ({date})',
-    'notif.yesterdayMsg':'Income RM {income} · Completed trips {trips}',
+    'notif.yesterdayMsg':'Income RM {income} · Expenses RM {expenses} · Net RM {net} · Completed {trips} · New bookings {newBookings}',
+    'notif.yesterdayToast':'Yesterday\'s summary is ready — check Notifications',
+    'notif.markRead':'Mark Read',
     'toast.notInTeam':'No access — ask admin to add your email in Settings → Team Users',
     'closing.sub':'Summarize period business performance','closing.incomeToday':'Total Income Today','closing.expensesToday':'Total Expenses Today',
     'closing.incomePeriod':'Period Total Income','closing.expensesPeriod':'Period Total Expenses',
@@ -1680,6 +1698,10 @@ const I18N = {
     'settings.soundEffects':'Sound Effects','settings.soundEffectsSub':'Success sound on actions','settings.confetti':'Celebration Confetti',
     'settings.confettiSub':'On daily closing save','settings.notifNewBooking':'New booking alerts','settings.notifPayment':'Payment reminders',
     'settings.notifMaintenance':'Vehicle maintenance due','settings.notifClosing':'Daily closing reminder','settings.notifOutstanding':'Outstanding balance alerts',
+    'settings.notifYesterday':'Previous day summary on login',
+    'settings.whatsapp':'WhatsApp Message','settings.whatsappSub':'Default message when contacting customers from a booking',
+    'settings.whatsappTemplate':'Message Template','settings.whatsappPlaceholders':'Placeholders: {name}, {date}, {dateShort}, {time}, {whenLabel}, {pickup}, {dropoff}',
+    'settings.saveWhatsapp':'Save Template',
     'settings.exportAll':'📤 Export All Data (Excel)','settings.clearDemo':'🗑 Clear Demo Data',
     'toast.signingIn':'Signing in...','toast.loginNoAccess':'Login OK but no admin access. Ask admin to add your email in Firebase → settings/access → admins',
     'toast.fileTooLarge':'File too large (max 5MB)','toast.receiptUploaded':'Receipt uploaded ✓','toast.rulesBlocked':'Firebase rules blocked access — deploy firestore.rules',
@@ -1694,6 +1716,7 @@ const I18N = {
     'toast.expenseUpdated':'Expense updated ✓','toast.dailyClosingSaved':'Daily closing saved ✓',
     'toast.bookingTypeAdded':'Booking type added ✓','toast.bookingTypeRemoved':'Booking type removed','toast.incomeSourceAdded':'Income source added ✓',
     'toast.incomeSourceRemoved':'Income source removed','toast.settingsSaved':'Settings saved ✓','toast.dataExported':'Data exported ✓',
+    'toast.noPhone':'No customer phone number on this booking',
     'toast.excelUnavailable':'Excel library not loaded — check your internet connection',
     'toast.deleteCustomerConfirm':'Delete this customer?','toast.deleteExpenseConfirm':'Delete this expense record?',
     'toast.deleteDriverConfirm':'Delete this driver?','toast.deleteVehicleConfirm':'Delete this vehicle?',
@@ -1749,7 +1772,7 @@ const I18N = {
     'section.outstanding':'未结清款项','section.quickActions':'快捷操作',
     'btn.viewAll':'查看全部','btn.newBooking':'+ 新建订单','btn.recordExpense':'+ 记录支出','btn.addIncome':'+ 添加收入',
     'btn.dailyClose':'🔐 每日结算','btn.login':'登录','btn.logout':'退出','btn.save':'保存','btn.cancel':'取消',
-    'btn.edit':'编辑','btn.del':'删除','btn.add':'添加','btn.viewDetails':'查看详情','btn.onTheWay':'出发中',
+    'btn.edit':'编辑','btn.del':'删除','btn.add':'添加','btn.viewDetails':'查看详情','btn.onTheWay':'出发中','btn.whatsapp':'WhatsApp',
     'login.title':'AppleRide','login.sub':'运输管理系统','login.secure':'AppleRide V1.0 · 安全登录',
     'form.email':'邮箱','form.password':'密码','form.date':'日期','form.actions':'操作',
     'mobile.home':'首页','mobile.bookings':'订单','mobile.mytrips':'行程','mobile.income':'收入','mobile.calendar':'日历',
@@ -1757,7 +1780,9 @@ const I18N = {
     'filter.allDrivers':'全部司机','filter.driver':'司机','filter.category':'类别',
     'toolbar.excel':'↓ Excel','toolbar.importExcel':'↑ 导入 Excel',
     'notif.yesterdayTitle':'昨日汇总 ({date})',
-    'notif.yesterdayMsg':'收入 RM {income} · 完成行程 {trips}',
+    'notif.yesterdayMsg':'收入 RM {income} · 支出 RM {expenses} · 净利 RM {net} · 完成 {trips} 单 · 新订单 {newBookings}',
+    'notif.yesterdayToast':'昨日汇总已生成，请查看通知',
+    'notif.markRead':'标记已读',
     'toast.notInTeam':'无访问权限 — 请联系管理员在 设置 → 团队用户 添加您的邮箱',
     'closing.sub':'汇总所选月份营业数据','closing.incomeToday':'今日总收入','closing.expensesToday':'今日总支出',
     'closing.incomePeriod':'期间总收入','closing.expensesPeriod':'期间总支出',
@@ -1831,6 +1856,10 @@ const I18N = {
     'settings.soundEffects':'音效','settings.soundEffectsSub':'操作成功时播放提示音','settings.confetti':'庆祝彩纸',
     'settings.confettiSub':'保存每日结算时显示','settings.notifNewBooking':'新订单提醒','settings.notifPayment':'付款提醒',
     'settings.notifMaintenance':'车辆保养到期','settings.notifClosing':'每日结算提醒','settings.notifOutstanding':'未结余额提醒',
+    'settings.notifYesterday':'登录时显示前一天汇总',
+    'settings.whatsapp':'WhatsApp 消息','settings.whatsappSub':'从订单联系客户时的默认文案',
+    'settings.whatsappTemplate':'消息模板','settings.whatsappPlaceholders':'可用变量：{name} 姓名、{date} 日期、{dateShort} 月日、{time} 时间、{whenLabel} 明天/日期、{pickup} 上车点、{dropoff} 下车点',
+    'settings.saveWhatsapp':'保存模板',
     'settings.exportAll':'📤 导出全部数据 (Excel)','settings.clearDemo':'🗑 清除演示数据',
     'toast.signingIn':'登录中...','toast.loginNoAccess':'登录成功但无管理员权限。请联系管理员在 Firebase → settings/access → admins 添加您的邮箱',
     'toast.fileTooLarge':'文件过大（最大 5MB）','toast.receiptUploaded':'收据已上传 ✓','toast.rulesBlocked':'Firebase 规则阻止访问 — 请部署 firestore.rules',
@@ -1845,6 +1874,7 @@ const I18N = {
     'toast.expenseUpdated':'支出已更新 ✓','toast.dailyClosingSaved':'每日结算已保存 ✓',
     'toast.bookingTypeAdded':'订单类型已添加 ✓','toast.bookingTypeRemoved':'订单类型已移除','toast.incomeSourceAdded':'收入来源已添加 ✓',
     'toast.incomeSourceRemoved':'收入来源已移除','toast.settingsSaved':'设置已保存 ✓','toast.dataExported':'数据已导出 ✓',
+    'toast.noPhone':'此订单没有客户电话号码',
     'toast.excelUnavailable':'Excel 库未加载 — 请检查网络连接',
     'toast.deleteCustomerConfirm':'删除此客户？','toast.deleteExpenseConfirm':'删除此支出记录？',
     'toast.deleteDriverConfirm':'删除此司机？','toast.deleteVehicleConfirm':'删除此车辆？',
@@ -2003,7 +2033,9 @@ let appSettings = {
   currency: 'MYR (RM)',
   theme: 'light',
   soundEnabled: false,
-  confettiEnabled: true
+  confettiEnabled: true,
+  yesterdayNotifEnabled: true,
+  whatsappTemplate: ''
 };
 
 let db = {
@@ -2100,6 +2132,8 @@ window.doLogout = async function() {
   listenersStarted = false;
   await signOut(auth);
   db = { bookings:[], customers:[], drivers:[], vehicles:[], income:[], expenses:[], closings:[], notifications:[] };
+  yesterdayNotifChecked = false;
+  loadedCollections = new Set();
   showLogin();
 };
 
@@ -2238,7 +2272,7 @@ function subscribeCol(colName, renderFn) {
     if (renderFn) renderFn();
     if (colName === 'bookings') checkFirebaseConnection();
     if (colName === 'bookings' && db.bookings.length) backfillMissingBookingIncomes();
-    maybeEnsureYesterdayNotification();
+    if (colName === 'bookings' || colName === 'income') maybeEnsureYesterdayNotification();
   }, (err) => {
     console.error(colName, err);
     firebaseConnected = false;
@@ -2549,7 +2583,18 @@ function getMonthRange() {
 }
 
 function sumAmount(items, field = 'amount') {
-  return (items || []).reduce((s, item) => s + (parseFloat(item?.[field]) || 0), 0);
+  return (items || []).reduce((s, item) => s + parseAmount(item?.[field]), 0);
+}
+
+function parseAmount(val) {
+  if (val == null || val === '') return 0;
+  if (typeof val === 'number') return Number.isFinite(val) ? val : 0;
+  const n = parseFloat(String(val).replace(/[^\d.,-]/g, '').replace(/,/g, ''));
+  return Number.isFinite(n) ? n : 0;
+}
+
+function formatMoney(val) {
+  return parseAmount(val).toFixed(2);
 }
 
 function getThisMonthItems(items, dateField = 'date') {
@@ -2727,10 +2772,10 @@ window.handleImport = async function(section, input) {
   try {
     const records = await readExcelFile(file);
     let count = 0;
-    for (const r of records) {
+    for (const raw of records) {
+      const r = normalizeImportRecord(raw, cfg.col);
       if (!r || (!r.id && !r.date && !r.amount && !r.name)) continue;
       if (!r.id) r.id = cfg.col.charAt(0).toUpperCase() + cfg.col.slice(1, -1) + Date.now() + count;
-      if (typeof r.amount === 'string') r.amount = parseFloat(r.amount) || 0;
       await saveRecord(cfg.col, r);
       count++;
     }
@@ -3060,6 +3105,7 @@ function startListeners() {
 
   showHomePage();
   setTimeout(() => { showHomePage(); renderCalendar(); }, 800);
+  setTimeout(() => maybeEnsureYesterdayNotification(), 2500);
 }
 
 function isPageActive(page) {
@@ -3073,11 +3119,48 @@ function today() {
 }
 
 function normalizeDateStr(val) {
-  if (!val) return '';
-  if (typeof val === 'string') return val.slice(0, 10);
+  if (val == null || val === '') return '';
+  if (typeof val === 'number') {
+    const d = new Date((val - 25569) * 86400000);
+    if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+  }
+  if (typeof val === 'string') {
+    const s = val.trim();
+    const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
+    const dmy = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+    if (dmy) return `${dmy[3]}-${dmy[2].padStart(2, '0')}-${dmy[1].padStart(2, '0')}`;
+    return s.slice(0, 10);
+  }
   if (val.toDate) return val.toDate().toISOString().slice(0, 10);
   if (val.seconds) return new Date(val.seconds * 1000).toISOString().slice(0, 10);
   return String(val).slice(0, 10);
+}
+
+function mapImportFields(record) {
+  const r = { ...record };
+  const byKey = {};
+  Object.keys(r).forEach(k => { byKey[k.toLowerCase().trim()] = r[k]; });
+  if (r.amount == null && byKey.amount != null) r.amount = byKey.amount;
+  if (!r.date && byKey.date != null) r.date = byKey.date;
+  if (!r.type && (byKey.type != null || byKey.category != null)) r.type = byKey.type ?? byKey.category;
+  if (!r.desc && (byKey.desc != null || byKey.description != null)) r.desc = byKey.desc ?? byKey.description;
+  if (!r.name && byKey.name != null) r.name = byKey.name;
+  if (!r.phone && byKey.phone != null) r.phone = byKey.phone;
+  if (!r.email && byKey.email != null) r.email = byKey.email;
+  return r;
+}
+
+function normalizeImportRecord(record, colName) {
+  const r = mapImportFields(record);
+  if (r.date) r.date = normalizeDateStr(r.date);
+  if (r.createdAt) r.createdAt = normalizeDateStr(r.createdAt);
+  if (r.amount != null) r.amount = parseAmount(r.amount);
+  if (colName === 'bookings') {
+    if (r.deposit != null) r.deposit = parseAmount(r.deposit);
+    if (r.balance != null) r.balance = parseAmount(r.balance);
+  }
+  return r;
 }
 
 function getThisMonthKey() {
@@ -3268,6 +3351,7 @@ function renderBookings() {
       <td>${bookingStatusBadge(b.status)}</td>
       <td class="table-actions"><div class="action-btns">
         <button class="btn btn-ghost btn-sm" onclick="viewBooking('${b.id}')">View</button>
+        ${whatsappBtnHtml(b)}
         ${canRequestRoger(b) ? `<button class="btn btn-ghost btn-sm" onclick="requestRoger('${b.id}')">${t('btn.roger')}</button>` : ''}
         ${getRoger(b).status === 'open' && rogerUserMatch(getRoger(b).requestedBy) ? `<button class="btn btn-ghost btn-sm" onclick="cancelRoger('${b.id}')">${t('btn.cancelRoger')}</button>` : ''}
         <button class="btn btn-ghost btn-sm" onclick="editBooking('${b.id}')">Edit</button>
@@ -3389,6 +3473,7 @@ window.viewBooking = function(id) {
       ${statuses.map(s => `<option ${s===b.status?'selected':''}>${s}</option>`).join('')}
     </select></div>
     <button class="btn btn-ghost" onclick="closeModal('modal-booking-detail')">Close</button>
+    ${whatsappBtnHtml(b)}
     <button class="btn btn-ghost" onclick="generateBookingReceipt('${b.id}')">${t('btn.generateReceipt')}</button>
     ${canRequestRoger(b) ? `<button class="btn btn-ghost" onclick="requestRoger('${b.id}')">${t('btn.roger')}</button>` : ''}
     ${getRoger(b).status === 'open' && rogerUserMatch(getRoger(b).requestedBy) ? `<button class="btn btn-ghost" onclick="cancelRoger('${b.id}')">${t('btn.cancelRoger')}</button>` : ''}
@@ -3681,12 +3766,10 @@ window.saveIncome = async function() {
 // ============================================================
 function renderExpenses() {
   const typeF = document.getElementById('expense-type-filter')?.value || '';
-  let list = getSectionData('expenses').sort((a,b) => (b.date||'').localeCompare(a.date||''));
+  let list = getSectionData('expenses').sort((a,b) => normalizeDateStr(b.date).localeCompare(normalizeDateStr(a.date)));
   if (typeF) list = list.filter(e => e.type === typeF);
-  let monthItems = getSectionMonthItems(db.expenses, 'expenses');
-  if (typeF) monthItems = monthItems.filter(e => e.type === typeF);
-  const monthTotal = sumAmount(monthItems);
-  const largest = monthItems.reduce((m, e) => Math.max(m, parseFloat(e.amount) || 0), 0);
+  const monthTotal = sumAmount(list);
+  const largest = list.reduce((m, e) => Math.max(m, parseAmount(e.amount)), 0);
   animateStat('expense-month-total', monthTotal, { prefix: 'RM ', decimals: 2 });
   animateStat('expense-total-records', list.length);
   animateStat('expense-largest', largest, { prefix: 'RM ', decimals: 2 });
@@ -3697,7 +3780,7 @@ function renderExpenses() {
     const receiptCell = e.receiptUrl
       ? `<a href="${e.receiptUrl}" target="_blank" rel="noopener" class="text-sm">📎 View</a>`
       : '<span class="text-sm text-muted">—</span>';
-    return `<tr><td>${e.date}</td><td><span class="badge badge-red">${e.type}</span></td><td class="text-sm">${e.desc || '—'}</td><td class="text-sm">${vehicle?.plate || '—'}</td><td class="text-sm text-muted">${receiptCell}</td><td class="font-bold red">RM ${parseFloat(e.amount || 0).toFixed(2)}</td>
+    return `<tr><td>${normalizeDateStr(e.date) || e.date || '—'}</td><td><span class="badge badge-red">${e.type}</span></td><td class="text-sm">${e.desc || '—'}</td><td class="text-sm">${vehicle?.plate || '—'}</td><td class="text-sm text-muted">${receiptCell}</td><td class="font-bold red">RM ${formatMoney(e.amount)}</td>
       <td class="table-actions"><div class="action-btns">
         <button class="btn btn-ghost btn-sm" onclick="editExpense('${e.id}')">Edit</button>
         <button class="btn btn-danger btn-sm" onclick="deleteExpense('${e.id}')">Del</button>
@@ -3720,7 +3803,7 @@ window.openExpenseModal = function() {
 
 window.saveExpense = async function() {
   const date = document.getElementById('ex-date').value;
-  const amount = parseFloat(document.getElementById('ex-amount').value);
+  const amount = parseAmount(document.getElementById('ex-amount').value);
   if (!date || !amount) { toast('Date and amount required', 'error'); return; }
   const editId = document.getElementById('edit-expense-id').value;
   const expenseId = editId || 'EX'+Date.now();
@@ -3757,7 +3840,7 @@ function renderClosing() {
   periodIncome.forEach(i => { incomeByType[i.type] = (incomeByType[i.type]||0) + (parseFloat(i.amount)||0); });
   document.getElementById('close-income-breakdown').innerHTML = Object.entries(incomeByType).map(([type, amt]) => `<div class="flex-center" style="justify-content:space-between;margin-bottom:6px"><span class="text-sm text-muted">${type}</span><span class="text-sm font-bold green">RM ${amt.toFixed(2)}</span></div>`).join('') || '<div class="text-xs text-dim">No income in period</div>';
   const expByType = {};
-  periodExpenses.forEach(e => { expByType[e.type] = (expByType[e.type]||0) + (parseFloat(e.amount)||0); });
+  periodExpenses.forEach(e => { expByType[e.type] = (expByType[e.type]||0) + parseAmount(e.amount); });
   document.getElementById('close-expense-breakdown').innerHTML = Object.entries(expByType).map(([type, amt]) => `<div class="flex-center" style="justify-content:space-between;margin-bottom:6px"><span class="text-sm text-muted">${type}</span><span class="text-sm font-bold red">RM ${amt.toFixed(2)}</span></div>`).join('') || '<div class="text-xs text-dim">No expenses in period</div>';
   const periodBookings = filterByDateRange(db.bookings, 'date', from, to);
   const completedTrips = periodBookings.filter(b => b.status === 'Completed').length;
@@ -3907,7 +3990,7 @@ function renderReports(tab) {
     <div class="card"><div class="section-title mb-16">${t('reports.incomeRecords')}</div><div class="table-wrap"><table><thead><tr><th>${t('th.date')||'Date'}</th><th>${t('th.type')}</th><th>${t('th.driver')}</th><th>${t('th.description')}</th><th>${t('th.amount')}</th></tr></thead><tbody>${detailRows || `<tr><td colspan="5">${emptyState('income', t('reports.noIncomeInPeriod'), t('reports.noIncomeInPeriodSub'))}</td></tr>`}</tbody></table></div></div>`;
   } else if (tab === 'expense') {
     const byType = {};
-    rExpenses.forEach(e => { byType[e.type] = (byType[e.type]||0) + (parseFloat(e.amount)||0); });
+    rExpenses.forEach(e => { byType[e.type] = (byType[e.type]||0) + parseAmount(e.amount); });
     const expenseTotal = sumAmount(rExpenses);
     el.innerHTML = `<div class="card"><div class="section-title mb-16">Expenses by Category</div><div class="table-wrap"><table><thead><tr><th>Category</th><th>Total (RM)</th><th>%</th></tr></thead><tbody>${Object.entries(byType).sort((a,b)=>b[1]-a[1]).map(([type,amt]) => { const pct = expenseTotal ? (amt/expenseTotal*100).toFixed(1) : 0; return `<tr><td>${type}</td><td class="font-bold red">RM ${amt.toFixed(2)}</td><td><div class="flex-center gap-8"><div class="progress-bar" style="flex:1"><div class="progress-fill" style="width:${pct}%;background:var(--red)"></div></div><span class="text-sm">${pct}%</span></div></td></tr>`; }).join('')}</tbody></table></div></div>`;
   } else if (tab === 'booking') {
@@ -4413,6 +4496,7 @@ function renderMyTrips() {
         <div class="text-sm">${vehicle ? '🚙 '+vehicle.plate : ''} · <span class="font-bold green">RM ${parseFloat(b.amount||0).toFixed(2)}</span>${parseFloat(b.balance)>0 ? ` · <span class="red font-bold">${t('balance')}: RM ${parseFloat(b.balance).toFixed(2)}</span>` : ''}</div>
         <div class="action-btns">
           ${getRoger(b).status === 'claimed' && getRoger(b).claimedBy === currentDriverProfile?.id ? `<button class="btn btn-primary btn-sm" onclick="viewRogerTrip('${b.id}')">${t('btn.viewDetails')}</button>` : `<button class="btn btn-primary btn-sm" onclick="viewDriverTrip('${b.id}')">${t('btn.viewDetails')}</button>`}
+          ${whatsappBtnHtml(b)}
           ${canRequestRoger(b) ? `<button class="btn btn-ghost btn-sm" onclick="requestRoger('${b.id}')">${t('btn.roger')}</button>` : ''}
           ${r.status === 'open' && r.requestedBy === currentDriverProfile?.id ? `<button class="btn btn-ghost btn-sm" onclick="cancelRoger('${b.id}')">${t('btn.cancelRoger')}</button>` : ''}
           ${!['Completed','Cancelled'].includes(b.status) && !['open','claimed'].includes(getRoger(b).status) ? `<button class="btn btn-success btn-sm" onclick="driverUpdateStatus('${b.id}','Driver On The Way')">${t('btn.onTheWay')}</button>` : ''}
@@ -4749,6 +4833,7 @@ window.viewRogerTrip = function(bookingId) {
   if (isClaimer && !isHistory && !['Completed', 'Cancelled', 'No Show'].includes(b.status)) {
     document.getElementById('roger-trip-footer').innerHTML = `
       <button class="btn btn-ghost" onclick="closeModal('modal-roger-trip')">${t('btn.cancel')}</button>
+      ${whatsappBtnHtml(b)}
       <button class="btn btn-ghost" onclick="generateBookingReceipt('${b.id}')">${t('btn.generateReceipt')}</button>
       <div class="roger-status-steps" style="flex:1">
         ${!['Driver On The Way', 'Passenger Picked Up', 'Completed'].includes(b.status) ? `<button class="btn btn-success btn-sm" onclick="rogerUpdateStatus('${b.id}','Driver On The Way')">${t('btn.onTheWay')}</button>` : ''}
@@ -4800,7 +4885,102 @@ function loadSettingsForm() {
   if (soundEl) soundEl.checked = !!appSettings.soundEnabled;
   const confEl = document.getElementById('setting-confetti');
   if (confEl) confEl.checked = appSettings.confettiEnabled !== false;
+  const waEl = document.getElementById('setting-whatsapp-template');
+  if (waEl) waEl.value = appSettings.whatsappTemplate || '';
 }
+
+// ============================================================
+// WHATSAPP
+// ============================================================
+const DEFAULT_WHATSAPP_TEMPLATE_ZH = '您好{name}，您预定的载送服务在{whenLabel}（{dateShort}，{time}），我{whenLabel}准时过来接您哦！谢谢您😊';
+const DEFAULT_WHATSAPP_TEMPLATE_EN = 'Hi {name}, your transport service is on {whenLabel} ({dateShort}, {time}). I will pick you up on time! Thank you 😊';
+
+function normalizePhoneForWhatsApp(phone) {
+  if (!phone) return '';
+  let digits = String(phone).replace(/\D/g, '');
+  if (!digits) return '';
+  if (digits.startsWith('0')) digits = '60' + digits.slice(1);
+  else if (!digits.startsWith('60') && digits.length <= 11) digits = '60' + digits;
+  return digits;
+}
+
+function parseBookingDate(dateStr) {
+  if (!dateStr) return null;
+  const [y, m, d] = dateStr.split('-').map(Number);
+  if (!y || !m || !d) return null;
+  return new Date(y, m - 1, d);
+}
+
+function formatDateShortZh(dateStr) {
+  const dt = parseBookingDate(dateStr);
+  if (!dt) return dateStr || '';
+  return `${dt.getMonth() + 1}月${dt.getDate()}日`;
+}
+
+function isBookingTomorrow(dateStr) {
+  const dt = parseBookingDate(dateStr);
+  if (!dt) return false;
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  return dt.getFullYear() === tomorrow.getFullYear() &&
+    dt.getMonth() === tomorrow.getMonth() &&
+    dt.getDate() === tomorrow.getDate();
+}
+
+function getWhenLabel(dateStr) {
+  if (isBookingTomorrow(dateStr)) return currentLang === 'zh' ? '明天' : 'tomorrow';
+  if (currentLang === 'zh') return formatDateShortZh(dateStr);
+  const dt = parseBookingDate(dateStr);
+  if (!dt) return dateStr || '';
+  return dt.toLocaleDateString('en-MY', { month: 'short', day: 'numeric' });
+}
+
+function getDefaultWhatsAppTemplate() {
+  return currentLang === 'zh' ? DEFAULT_WHATSAPP_TEMPLATE_ZH : DEFAULT_WHATSAPP_TEMPLATE_EN;
+}
+
+function buildWhatsAppMessage(booking) {
+  const { name } = getBookingCustomerInfo(booking);
+  const template = (appSettings.whatsappTemplate || '').trim() || getDefaultWhatsAppTemplate();
+  return template
+    .replace(/\{name\}/g, name || '')
+    .replace(/\{date\}/g, booking.date || '')
+    .replace(/\{dateShort\}/g, formatDateShortZh(booking.date))
+    .replace(/\{time\}/g, booking.time || '')
+    .replace(/\{whenLabel\}/g, getWhenLabel(booking.date))
+    .replace(/\{pickup\}/g, booking.pickup || '')
+    .replace(/\{dropoff\}/g, booking.dropoff || '');
+}
+
+function getWhatsAppUrl(phone, message) {
+  const normalized = normalizePhoneForWhatsApp(phone);
+  if (!normalized) return '';
+  return `https://wa.me/${normalized}?text=${encodeURIComponent(message)}`;
+}
+
+function bookingHasPhone(booking) {
+  return !!normalizePhoneForWhatsApp(getBookingCustomerInfo(booking).phone);
+}
+
+function whatsappBtnHtml(booking) {
+  if (!booking || !bookingHasPhone(booking)) return '';
+  return `<button class="btn btn-whatsapp btn-sm" onclick="openWhatsAppForBooking('${booking.id}')" title="${t('btn.whatsapp')}">💬 ${t('btn.whatsapp')}</button>`;
+}
+
+window.openWhatsAppForBooking = function(bookingId) {
+  const b = db.bookings.find(x => x.id === bookingId);
+  if (!b) return;
+  const { phone } = getBookingCustomerInfo(b);
+  const url = getWhatsAppUrl(phone, buildWhatsAppMessage(b));
+  if (!url) { toast(t('toast.noPhone'), 'error'); return; }
+  window.open(url, '_blank');
+};
+
+window.saveWhatsAppSettings = async function() {
+  appSettings.whatsappTemplate = document.getElementById('setting-whatsapp-template')?.value?.trim() || '';
+  await saveAppSettings();
+  toast(t('toast.settingsSaved'), 'success');
+};
 
 // ============================================================
 // RECEIPT PDF
