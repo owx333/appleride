@@ -202,9 +202,18 @@
   .cal-day.empty { background: transparent; border-color: transparent; cursor: default; }
   .cal-day-num { font-size: 12px; font-weight: 600; color: var(--text2); margin-bottom: 4px; }
   .cal-day.today .cal-day-num { color: var(--accent); }
-  .cal-event { font-size: 10px; background: var(--accent-glow); color: var(--accent); border-radius: 3px; padding: 1px 4px; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .cal-event.green { background: rgba(16,185,129,0.12); color: var(--green); }
-  .cal-event.yellow { background: rgba(245,158,11,0.12); color: var(--yellow); }
+  .cal-event { font-size: 10px; background: var(--accent-glow); color: var(--accent); border-radius: 3px; padding: 1px 4px; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-left: 2px solid transparent; }
+  .cal-event.owner-apple { background: rgba(236,72,153,0.16); color: #be185d; border-left-color: #ec4899; }
+  .cal-event.owner-tommy { background: rgba(59,130,246,0.16); color: #1d4ed8; border-left-color: #3b82f6; }
+  .cal-event.owner-other { background: rgba(107,114,128,0.12); color: #4b5563; border-left-color: #9ca3af; }
+  .cal-event.cancelled { opacity: 0.5; text-decoration: line-through; }
+  .cal-event.completed { opacity: 0.85; }
+  .cal-legend { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 12px; align-items: center; }
+  .cal-legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text2); }
+  .cal-legend-swatch { width: 14px; height: 14px; border-radius: 4px; border-left: 3px solid transparent; }
+  .cal-legend-swatch.owner-apple { background: rgba(236,72,153,0.16); border-left-color: #ec4899; }
+  .cal-legend-swatch.owner-tommy { background: rgba(59,130,246,0.16); border-left-color: #3b82f6; }
+  .cal-legend-swatch.owner-other { background: rgba(107,114,128,0.12); border-left-color: #9ca3af; }
   .cal-nav { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
   .cal-nav button { background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 5px 10px; border-radius: 6px; cursor: pointer; font-size: 14px; }
   .cal-nav button:hover { background: var(--surface3); }
@@ -786,6 +795,12 @@
           <div class="cal-month" id="cal-month-label"></div>
           <button onclick="calNext()">›</button>
           <button class="btn btn-primary btn-sm" onclick="openBookingModal()">+ Booking</button>
+        </div>
+        <div class="cal-legend" id="cal-legend">
+          <span class="text-xs text-dim" data-i18n="calendar.legend">Owner</span>
+          <div class="cal-legend-item"><span class="cal-legend-swatch owner-apple"></span><span data-i18n="calendar.apple">Apple — Pink</span></div>
+          <div class="cal-legend-item"><span class="cal-legend-swatch owner-tommy"></span><span data-i18n="calendar.tommy">Tommy — Blue</span></div>
+          <div class="cal-legend-item"><span class="cal-legend-swatch owner-other"></span><span data-i18n="calendar.other">Other</span></div>
         </div>
         <div class="cal-grid" id="cal-headers"></div>
         <div class="cal-grid mt-4" id="cal-grid"></div>
@@ -1603,6 +1618,7 @@ const I18N = {
     'nav.drivers':'Drivers','nav.vehicles':'Vehicles','nav.income':'Income','nav.expenses':'Expenses','nav.closing':'Daily Close',
     'nav.reports':'Reports','nav.notifications':'Alerts','nav.settings':'Settings',
     'page.dashboard':'Dashboard','page.calendar':'Calendar','page.bookings':'Bookings','page.customers':'Customers',
+    'calendar.legend':'Owner','calendar.apple':'Apple — Pink','calendar.tommy':'Tommy — Blue','calendar.other':'Other',
     'page.drivers':'Drivers','page.vehicles':'Vehicles','page.income':'Income Records','page.expenses':'Expense Records',
     'page.closing':'Daily Closing','page.reports':'Reports','page.notifications':'Notifications & Alerts','page.settings':'Settings','page.mytrips':'My Assigned Trips',
     'stat.todayBookings':"Today's Bookings",'stat.todayIncome':"Today's Income",'stat.todayExpenses':"Today's Expenses",'stat.todayProfit':"Today's Profit",
@@ -1761,6 +1777,7 @@ const I18N = {
     'nav.drivers':'司机','nav.vehicles':'车辆','nav.income':'收入','nav.expenses':'支出','nav.closing':'日结',
     'nav.reports':'报表','nav.notifications':'通知','nav.settings':'设置',
     'page.dashboard':'首页','page.calendar':'日历','page.bookings':'订单管理','page.customers':'客户管理',
+    'calendar.legend':'创建人','calendar.apple':'Apple — 粉红','calendar.tommy':'Tommy — 蓝色','calendar.other':'其他',
     'page.drivers':'司机管理','page.vehicles':'车辆管理','page.income':'收入记录','page.expenses':'支出记录',
     'page.closing':'每日结算','page.reports':'数据报表','page.notifications':'通知与提醒','page.settings':'系统设置','page.mytrips':'我的行程',
     'stat.todayBookings':'今日订单','stat.todayIncome':'今日收入','stat.todayExpenses':'今日支出','stat.todayProfit':'今日利润',
@@ -3311,10 +3328,17 @@ window.renderDashboard = renderDashboard;
 // ============================================================
 // CALENDAR
 // ============================================================
+function getCalendarOwnerClass(booking) {
+  const email = (booking.ownerEmail || booking.roger?.requestedBy || '').toLowerCase();
+  const name = (booking.ownerName || booking.roger?.requestedByName || '').toLowerCase();
+  if (email.includes('apple') || name.includes('apple')) return 'owner-apple';
+  if (email.includes('tommy') || name.includes('tommy')) return 'owner-tommy';
+  return 'owner-other';
+}
+
 function renderCalendar() {
   const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   document.getElementById('cal-headers').innerHTML = days.map(d => `<div class="cal-day-header">${d}</div>`).join('');
-  const now = new Date();
   const firstDay = new Date(calYear, calMonth, 1).getDay();
   const daysInMonth = new Date(calYear, calMonth+1, 0).getDate();
   const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -3324,11 +3348,12 @@ function renderCalendar() {
   for (let d = 1; d <= daysInMonth; d++) {
     const dateStr = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     const isToday = dateStr === today();
-    const dayBookings = db.bookings.filter(b => b.date === dateStr);
+    const dayBookings = db.bookings.filter(b => normalizeDateStr(b.date) === dateStr);
     const eventsHtml = dayBookings.slice(0,3).map(b => {
-      const cls = b.status === 'Completed' ? 'green' : b.status === 'Cancelled' ? '' : 'yellow';
+      const ownerCls = getCalendarOwnerClass(b);
+      const statusCls = b.status === 'Cancelled' ? 'cancelled' : b.status === 'Completed' ? 'completed' : '';
       const c = db.customers.find(x => x.id === b.customerId);
-      return `<div class="cal-event ${cls}" draggable="true" ondragstart="onCalDragStart(event,'${b.id}')" ondragend="onCalDragEnd(event)">${b.time} ${c?.name?.split(' ')[0] || b.type}</div>`;
+      return `<div class="cal-event ${ownerCls} ${statusCls}" draggable="true" ondragstart="onCalDragStart(event,'${b.id}')" ondragend="onCalDragEnd(event)" title="${(b.ownerName || b.ownerEmail || '').split('@')[0] || '—'}">${b.time} ${c?.name?.split(' ')[0] || b.type}</div>`;
     }).join('');
     html += `<div class="cal-day ${isToday ? 'today' : ''}" onclick="calDayClick('${dateStr}')" ondragover="onCalDragOver(event)" ondragleave="onCalDragLeave(event)" ondrop="onCalDrop(event,'${dateStr}')">
       <div class="cal-day-num">${d}</div>${eventsHtml}
